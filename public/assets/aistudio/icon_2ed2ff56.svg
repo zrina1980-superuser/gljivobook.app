@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Duboka OLED cyber pozadina po uzoru na zrina.app -->
+    <radialGradient id="bgGlow" cx="50%" cy="44%" r="68%">
+      <stop offset="0%" stop-color="#0d1b38"/>
+      <stop offset="48%" stop-color="#060c1a"/>
+      <stop offset="100%" stop-color="#020409"/>
+    </radialGradient>
+
+    <!-- Unutarnja aura iza znaka Z -->
+    <radialGradient id="coreAura" cx="50%" cy="42%" r="42%">
+      <stop offset="0%" stop-color="#00f5ff" stop-opacity="0.20"/>
+      <stop offset="55%" stop-color="#7209b7" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Glavni cijan -> plava -> ljubičasta -> magenta gradijent za Z -->
+    <linearGradient id="cyberGradient" x1="15%" y1="10%" x2="85%" y2="90%">
+      <stop offset="0%" stop-color="#00f5ff"/>
+      <stop offset="32%" stop-color="#00bbf9"/>
+      <stop offset="68%" stop-color="#7b2cbf"/>
+      <stop offset="100%" stop-color="#f72585"/>
+    </linearGradient>
+
+    <!-- Gradijent za .app / .FM sufiks (identičan zrina.app slici) -->
+    <linearGradient id="appSuffixGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2ef2ff"/>
+      <stop offset="100%" stop-color="#00f5d4"/>
+    </linearGradient>
+
+    <!-- Filteri za neon sjaj -->
+    <filter id="glowHeavy" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur1"/>
+      <feGaussianBlur stdDeviation="3" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="glowSubtle" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- OLED Tamna pozadina -->
+  <rect width="512" height="512" rx="115" fill="url(#bgGlow)"/>
+  <circle cx="256" cy="220" r="205" fill="url(#coreAura)"/>
+
+  <!-- Konstelacijska mreža u kutovima (kao na zrina.app originalu) -->
+  <g stroke="#00bbf9" stroke-width="0.8" opacity="0.24" fill="#00f5ff">
+    <line x1="390" y1="25" x2="445" y2="68"/>
+    <line x1="445" y1="68" x2="485" y2="40"/>
+    <line x1="445" y1="68" x2="465" y2="125"/>
+    <line x1="390" y1="25" x2="465" y2="125"/>
+    <circle cx="390" cy="25" r="2.5"/>
+    <circle cx="445" cy="68" r="3.5"/>
+    <circle cx="485" cy="40" r="2"/>
+    <circle cx="465" cy="125" r="2.5"/>
+
+    <line x1="35" y1="415" x2="88" y2="455"/>
+    <line x1="88" y1="455" x2="55" y2="490"/>
+    <line x1="88" y1="455" x2="145" y2="475"/>
+    <circle cx="35" cy="415" r="2.5"/>
+    <circle cx="88" cy="455" r="3.5"/>
+    <circle cx="145" cy="475" r="2"/>
+
+    <line x1="425" y1="430" x2="470" y2="465"/>
+    <line x1="425" y1="430" x2="380" y2="475"/>
+    <circle cx="425" cy="430" r="3"/>
+    <circle cx="470" cy="465" r="2.5"/>
+    <circle cx="380" cy="475" r="2"/>
+  </g>
+
+  <!-- Suptilni pozadinski programski kôd -->
+  <g fill="#38bdf8" opacity="0.14" font-family="monospace" font-size="7.5">
+    <text x="28" y="66">const app = zrina.system();</text>
+    <text x="28" y="80">stream.init(audio_buffer);</text>
+    <text x="28" y="94">dsp.equalizer(5_band);</text>
+    <text x="358" y="206">zrina.FM = "live";</text>
+    <text x="358" y="220">icy.meta = true;</text>
+    <text x="358" y="234">port: 3000 // stream</text>
+  </g>
+
+  <!-- Višeslojni precizni HUD prsten (identičan zrina.app okviru) -->
+  <g filter="url(#glowSubtle)">
+    <!-- Vanjski točkasti prsten -->
+    <circle cx="256" cy="222" r="204" fill="none" stroke="#00bbf9" stroke-width="1.2" opacity="0.38" stroke-dasharray="2 8"/>
+    <!-- Glavni prsten s lukovima -->
+    <circle cx="256" cy="222" r="195" fill="none" stroke="#00f5ff" stroke-width="1.8" opacity="0.58" stroke-dasharray="90 14 45 14 110 16 65 14"/>
+    <!-- Naglašeni debeli HUD segmenti -->
+    <circle cx="256" cy="222" r="195" fill="none" stroke="#00f5ff" stroke-width="4" opacity="0.88" stroke-dasharray="55 320 40 300 50 400" stroke-linecap="round"/>
+    <!-- Prsten s finim mjernim crtama (tick marks) -->
+    <circle cx="256" cy="222" r="186" fill="none" stroke="#38bdf8" stroke-width="4.5" opacity="0.42" stroke-dasharray="1.5 4.5"/>
+    <!-- Unutarnja tanka vodilica -->
+    <circle cx="256" cy="222" r="179" fill="none" stroke="#00f5ff" stroke-width="1" opacity="0.35"/>
+
+    <!-- Svijetleće HUD točke po obodu -->
+    <circle cx="52" cy="222" r="3.5" fill="#00f5ff"/>
+    <circle cx="460" cy="222" r="3.5" fill="#38bdf8"/>
+    <circle cx="256" cy="18" r="3" fill="#00f5ff"/>
+    <circle cx="394" cy="72" r="3.5" fill="#00f5ff"/>
+    <circle cx="118" cy="372" r="3" fill="#00bbf9"/>
+  </g>
+
+  <!-- FM Radio valovi uz vanjske strane kôd tagova (diskretna posveta radiju) -->
+  <g filter="url(#glowSubtle)" fill="none" stroke-linecap="round">
+    <!-- Lijevi FM valovi (cijan) -->
+    <path d="M 116 198 A 24 24 0 0 0 116 230" stroke="#00f5ff" stroke-width="2.6" opacity="0.65"/>
+    <path d="M 105 190 A 36 36 0 0 0 105 238" stroke="#00bbf9" stroke-width="2" opacity="0.38"/>
+    <!-- Desni FM valovi (ljubičasto-magenta) -->
+    <path d="M 376 212 A 24 24 0 0 1 376 244" stroke="#d946ef" stroke-width="2.6" opacity="0.65"/>
+    <path d="M 387 204 A 36 36 0 0 1 387 252" stroke="#f72585" stroke-width="2" opacity="0.38"/>
+  </g>
+
+  <!-- Lijevi kôd tag: < / > (Cijan neon, identičan zrina.app) -->
+  <g filter="url(#glowSubtle)" stroke="#00f5ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 148 196 L 128 214 L 148 232" />
+    <line x1="165" y1="191" x2="153" y2="237" stroke-width="4.2" />
+    <path d="M 171 196 L 191 214 L 171 232" />
+  </g>
+
+  <!-- Desni kôd tag: < / > (Ljubičasto-magenta neon, identičan zrina.app) -->
+  <g filter="url(#glowSubtle)" stroke="#a855f7" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 321 210 L 301 228 L 321 246" />
+    <line x1="338" y1="205" x2="326" y2="251" stroke-width="4.2" />
+    <path d="M 344 210 L 364 228 L 344 246" />
+  </g>
+
+  <!-- Glavni PCB kiber-znak "Z" (prema zrina.app originalu) -->
+  <g filter="url(#glowHeavy)">
+    <!-- Vanjska dvostruka kontura Z -->
+    <path d="M 172 118 
+             L 340 118 
+             L 340 162 
+             L 238 278 
+             L 340 278 
+             L 340 322 
+             L 172 322 
+             L 172 278 
+             L 274 162 
+             L 172 162 Z" 
+          fill="#050b18" 
+          fill-opacity="0.78"
+          stroke="url(#cyberGradient)" 
+          stroke-width="8" 
+          stroke-linejoin="round" 
+          stroke-linecap="round"/>
+
+    <!-- Vanjske kose tech vodilice uz dijagonalu (kao na zrina.app slici) -->
+    <path d="M 352 132 L 352 168 L 296 232" stroke="#a855f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/>
+    <path d="M 160 308 L 160 272 L 216 208" stroke="#00bbf9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.85"/>
+
+    <!-- Unutarnji PCB vodovi i čvorišta (solder pads) -->
+    <!-- Gornja grana -->
+    <path d="M 192 134 L 245 134 L 256 144 L 322 144" stroke="#00f5ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="192" cy="134" r="4.5" fill="#050b18" stroke="#00f5ff" stroke-width="2.8"/>
+
+    <!-- Gornje-desni prijelom u dijagonalu -->
+    <path d="M 200 150 L 298 150 L 228 230" stroke="#00bbf9" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="228" cy="230" r="4.5" fill="#050b18" stroke="#00bbf9" stroke-width="2.8"/>
+
+    <!-- Središnja dijagonalna magistrala -->
+    <path d="M 318 134 L 292 134 L 190 250 L 190 306 L 245 306" stroke="url(#cyberGradient)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="268" cy="222" r="4.5" fill="#050b18" stroke="#38bdf8" stroke-width="2.8"/>
+
+    <!-- Donja grana -->
+    <path d="M 272 248 L 218 308 L 320 308" stroke="#d946ef" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="272" cy="248" r="4.5" fill="#050b18" stroke="#a855f7" stroke-width="2.8"/>
+    <circle cx="320" cy="308" r="4.5" fill="#050b18" stroke="#f72585" stroke-width="2.8"/>
+
+    <path d="M 255 292 L 322 292" stroke="#f72585" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+  </g>
+
+  <!-- Donji natpis u identičnom dvobojnom stilu kao zrina.app: bijeli korijen + neon tirkizni .app -->
+  <g filter="url(#glowSubtle)">
+    <text x="256" y="386" 
+          font-family="'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" 
+          font-size="52" 
+          font-weight="800" 
+          letter-spacing="-1px"
+          text-anchor="middle">
+      <tspan fill="#ffffff">radio</tspan><tspan fill="url(#appSuffixGrad)">.app</tspan>
+    </text>
+  </g>
+</svg>
