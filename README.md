@@ -17,7 +17,7 @@ Spaja klasičnu mikološku taksonomiju i morfološke opise prema standardu prof.
 - **100% Offline Terenski Mikološki Determinator (`offlineDeterminator.ts`):** Uključuje **Brzi morfološki filtar prije kamere („Obilježja koja vidiš”)** koji u 4 klika sužava 80% gljiva te lokalnu spektralnu i morfološku analizu fotografija iz 3 kuta bez interneta.
 - **169 autohtonih vrsta Hrvatske s hrvatskim narodnim imenima (`folkNames`), pametnim razvrstavanjem (`⭐ Favoriti` vs `A–Z`), cjelogodišnjom matricom „Upozorenje tjedna” i mikoriznim filtrom po stablima (`🌲 Ispod stabla`).**
 - **Službeni SOS protokol Centra za kontrolu otrovanja pri Institutu za medicinska istraživanja i medicinu rada (IMI) (`+385 1 2348 342` / `112`)** s razlikovanjem sindroma kratke (< 6 h) i duge latencije (6–24 h+).
-- **Satelitski i topografski GPS dnevnik nalazišta (`Leaflet`), „Outdoor Field Log” generator kartice ulova (`1080×1350 px`), GPS lokator parkiranog automobila (`🚗 Gdje mi je auto?`), praćenje dnevnog limita berbe (3 kg), dinamička evidencija dozvole Hrvatskih šuma te rangirani kviz znanja (30 pitanja) s digitalnom Gljivarskom iskaznicom.**
+- **Satelitski i topografski GPS dnevnik nalazišta (`Leaflet`), „Outdoor Field Log” generator kartice ulova (`1080×1350 px`), GPS lokator parkiranog automobila (`🚗 Gdje mi je auto?`), praćenje dnevnog limita berbe (3 kg), dinamička evidencija dozvole Hrvatskih šuma te mikološki kviz sustav (baza 60 pitanja Set A & B, runda od 30 pitanja kroz 5 rangova, 3 terenska jokera, High-Score Lock, „Mala škola mikologije” i Gljivarska iskaznica s QR verifikacijskim pečatom).**
 
 ---
 
@@ -61,8 +61,12 @@ Spaja klasičnu mikološku taksonomiju i morfološke opise prema standardu prof.
 ### 7. 📍 Terenski GPS Dnevnik, „Outdoor Field Log” Share Card (`1080×1350 px`), Lokator Auta, 3 kg Limit & Dozvola Hrvatskih Šuma
 - **Fotografije nalaza (`photoData` u `IndexedDB`), GPS Lokator parkiranog automobila (`🚗 Gdje mi je auto?`), praćenje dnevnog limita berbe od 3,00 kg (`3000 g`), interaktivna satelitska/topografska `Leaflet` karta, GPX 1.1 XML izvoz/uvoz, „Outdoor Field Log” Share Card (`1080×1350 px` sa satelitskim mini-radarom) te Dinamička evidencija dozvole Hrvatskih šuma (`ForestPermitSection.tsx`).**
 
-### 8. 🏅 Rangirani Kviz Znanja (30 pitanja, 6 rangova, Foto-pitanja) & Digitalna Gljivarska Iskaznica (`HTML5 Canvas`)
-- **Certifikacijski ispit od 30 pitanja kroz 6 rangova** uz 10 vizualnih foto-pitanja i generator digitalne **Gljivarske iskaznice sa selfie portretom (`800×500 px PNG`)**.
+### 8. 🏅 Mikološki Kviz Sustav (60 Pitanja Set A & B, 3 Jokera, High-Score Lock), „Mala škola mikologije” & Gljivarska Iskaznica (`HTML5 Canvas`)
+- **Dinamika runde od 30 pitanja kroz 5 progresivnih rangova (`src/services/quizEngine.ts`, `src/data/quizQuestions.ts`):** Iz baze od 60 pitanja motor za svaku rundu nasumično izvlači po 3 pitanja iz Seta A i 3 iz Seta B za svaki rang (*1. Šumski šetač*, *2. Berač pripravnik*, *3. Iskusni gljivar*, *4. Terenski determinator*, *5. Božčev učenik / Master*).
+- **3 Terenska Jokera (jednokratno po rundi):** `[ 50:50 (Dva spora) ]`, `[ 🧠 Savjet prof. Bošca ]` i `[ 🧺 Sigurnosna košara (Preskok) ]` (zamjena pitanjem iz istog ranga i seta bez bodovnog penala).
+- **High-Score Lock (`gljivobook_quiz_record`):** Trajno zaključavanje najboljeg ostvarenog rezultata i titule u `localStorage` (`Math.max(previousBest, currentScore)`).
+- **📖 Mala škola mikologije (Terenska skripta za štrebere):** Cjeloviti edukativni vodič kroz 5 poglavlja (*Anatomija, Ekologija i Bonton, Mikotoksikologija, Kritični parovi dvojnica, Kuhinja i čuvanje*).
+- **Službena Gljivarska iskaznica (`800×500 px PNG`):** HTML5 Canvas certifikat s imenom igrača, selfie portretom, titulom (do *Doktora šume — Zlatne iskaznice prof. Bošca*), QR verifikacijskim pečatom i detaljnom analizom svih odgovora.
 
 ---
 
