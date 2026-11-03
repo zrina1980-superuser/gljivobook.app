@@ -145,11 +145,11 @@ export const QuizView: React.FC<QuizViewProps> = ({ mushrooms, onSelectMushroom 
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Preload official PNG logo (/pwa-192x192.png) for HTML5 Canvas certificate
+  // Preload official PNG logo (/zrina-neon-192.png) for HTML5 Canvas certificate
   useEffect(() => {
     const img = new Image();
     img.onload = () => setOfficialLogoImg(img);
-    img.src = '/pwa-192x192.png';
+    img.src = '/zrina-neon-192.png?v=34';
   }, []);
 
   // Load saved avatar from IndexedDB and restore any in-progress 30-question round on mount

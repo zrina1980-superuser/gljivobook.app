@@ -3,7 +3,7 @@
   "slug": "gljivobook-zrina",
   "name": "Gljivobook by Zrina",
   "description": "Terenski atlas gljiva, vizualni ključ i offline GPS dnevnik nalaza by Zrina.",
-  "icon": "/pwa-512x512.png",
+  "icon": "/zrina-neon-512.png",
   "requestFramePermissions": ["camera", "microphone", "geolocation"],
   "majorCapabilities": []
 }

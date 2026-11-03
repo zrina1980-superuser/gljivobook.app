@@ -14,7 +14,7 @@ export const ZrinaLogo: React.FC<ZrinaLogoProps> = ({
 }) => {
   return (
     <img
-      src="/pwa-512x512.png"
+      src="/zrina-neon-512.png?v=34"
       alt="gljivobook.app by Zrina"
       draggable={false}
       className={`shrink-0 select-none object-cover bg-[#01080c] ${className}`}

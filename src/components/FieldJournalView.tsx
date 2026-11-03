@@ -554,7 +554,7 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
   useEffect(() => {
     const img = new Image();
     img.onload = () => setOfficialLogoImg(img);
-    img.src = '/pwa-192x192.png';
+    img.src = '/zrina-neon-192.png?v=34';
   }, []);
 
   // Interactive Forest Satellite & Topo Map state (Leaflet)
