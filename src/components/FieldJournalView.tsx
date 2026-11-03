@@ -546,9 +546,16 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
   const [shareDateTimeText, setShareDateTimeText] = useState<string>('');
   const [shareWeightGrams, setShareWeightGrams] = useState<string>('');
   const [shareLoadedImage, setShareLoadedImage] = useState<HTMLImageElement | null>(null);
+  const [officialLogoImg, setOfficialLogoImg] = useState<HTMLImageElement | null>(null);
   const [shareRadarCanvas, setShareRadarCanvas] = useState<HTMLCanvasElement | null>(null);
   const [shareRadarTick, setShareRadarTick] = useState<number>(0);
   const shareCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setOfficialLogoImg(img);
+    img.src = '/pwa-192x192.png';
+  }, []);
 
   // Interactive Forest Satellite & Topo Map state (Leaflet)
   // In Paperlike light theme, default/adapt to standard daytime terrain layer ('topo')
@@ -1406,23 +1413,19 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
     const sigRightX = W - 64;
     const sigY = 1280;
 
-    // Draw small minimalist mushroom logo to the left of the signature text
-    const logoCx = sigRightX - sigWidth - 22;
-    const logoCy = sigY - 7;
+    // Draw official gljivobook.app PNG logo to the left of the signature text
+    const logoSize = 32;
+    const logoX = sigRightX - sigWidth - logoSize - 12;
+    const logoY = sigY - 23;
 
-    // Mushroom cap
-    ctx.beginPath();
-    ctx.moveTo(logoCx - 11, logoCy + 1);
-    ctx.bezierCurveTo(logoCx - 11, logoCy - 11, logoCx + 11, logoCy - 11, logoCx + 11, logoCy + 1);
-    ctx.closePath();
-    ctx.fillStyle = '#10b981';
-    ctx.fill();
-
-    // Mushroom stem
-    ctx.beginPath();
-    ctx.roundRect(logoCx - 3.5, logoCy + 1, 7, 9, 2.5);
-    ctx.fillStyle = '#d6e3da';
-    ctx.fill();
+    if (officialLogoImg) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(logoX, logoY, logoSize, logoSize, 7);
+      ctx.clip();
+      ctx.drawImage(officialLogoImg, logoX, logoY, logoSize, logoSize);
+      ctx.restore();
+    }
 
     // Signature text
     ctx.textAlign = 'right';
@@ -1433,6 +1436,7 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
   }, [
     shareModalFinding,
     shareLoadedImage,
+    officialLogoImg,
     shareRadarCanvas,
     shareRadarTick,
     shareLocationLabel,

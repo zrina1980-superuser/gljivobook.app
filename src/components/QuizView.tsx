@@ -141,8 +141,16 @@ export const QuizView: React.FC<QuizViewProps> = ({ mushrooms, onSelectMushroom 
   });
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
   const [loadedAvatarImg, setLoadedAvatarImg] = useState<HTMLImageElement | null>(null);
+  const [officialLogoImg, setOfficialLogoImg] = useState<HTMLImageElement | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Preload official PNG logo (/pwa-192x192.png) for HTML5 Canvas certificate
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setOfficialLogoImg(img);
+    img.src = '/pwa-192x192.png';
+  }, []);
 
   // Load saved avatar from IndexedDB and restore any in-progress 30-question round on mount
   useEffect(() => {
@@ -501,46 +509,23 @@ export const QuizView: React.FC<QuizViewProps> = ({ mushrooms, onSelectMushroom 
       ctx.stroke();
     });
 
-    // 3. Top Header Bar: Gljivobook Logo + Official Card Title + Serial/Date
-    ctx.fillStyle = '#13241a';
+    // 3. Top Header Bar: Official gljivobook.app PNG Logo + Card Title + Serial/Date
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(48, 44, 52, 52, 13);
+    ctx.fillStyle = '#040a0e';
+    ctx.fill();
+    ctx.clip();
+    if (officialLogoImg) {
+      ctx.drawImage(officialLogoImg, 48, 44, 52, 52);
+    }
+    ctx.restore();
+
     ctx.strokeStyle = '#10b981';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.roundRect(48, 44, 52, 52, 13);
-    ctx.fill();
     ctx.stroke();
-
-    // Stylized Mushroom Emblem
-    ctx.save();
-    ctx.translate(50, 46);
-    ctx.beginPath();
-    ctx.moveTo(8, 22);
-    ctx.bezierCurveTo(8, 11, 16, 6, 24, 6);
-    ctx.bezierCurveTo(32, 6, 40, 11, 40, 22);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(16, 185, 129, 0.32)';
-    ctx.fill();
-    ctx.strokeStyle = '#10b981';
-    ctx.lineWidth = 2.2;
-    ctx.stroke();
-
-    ctx.fillStyle = '#fbbf24';
-    ctx.beginPath();
-    ctx.arc(18, 14, 1.9, 0, Math.PI * 2);
-    ctx.arc(29, 13, 1.7, 0, Math.PI * 2);
-    ctx.arc(24, 18, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(19, 22);
-    ctx.lineTo(19, 30);
-    ctx.lineTo(24, 39);
-    ctx.lineTo(29, 30);
-    ctx.lineTo(29, 22);
-    ctx.strokeStyle = '#f2f6f3';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.restore();
 
     ctx.fillStyle = '#10b981';
     ctx.font = 'bold 11px Inter, system-ui, sans-serif';
@@ -864,6 +849,7 @@ export const QuizView: React.FC<QuizViewProps> = ({ mushrooms, onSelectMushroom 
     activeSubView,
     holderName,
     loadedAvatarImg,
+    officialLogoImg,
     lockedCertTier,
     effectiveBestScore,
     effectiveTotal,

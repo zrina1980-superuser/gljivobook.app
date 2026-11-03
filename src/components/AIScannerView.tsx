@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Camera,
   AlertTriangle,
@@ -10,6 +10,14 @@ import {
   WifiOff,
   ShieldCheck,
   Filter,
+  Info,
+  KeyRound,
+  ExternalLink,
+  Cpu,
+  Eye,
+  ChevronDown,
+  ChevronUp,
+  X,
 } from 'lucide-react';
 import { Mushroom } from '../types/mushroom';
 import {
@@ -23,11 +31,14 @@ import {
   UploadedPhotoSlot,
   VisibleTraitsFilter,
 } from '../services/offlineDeterminator';
+import { MushroomImage } from './MushroomImage';
 
 interface AIScannerViewProps {
   mushrooms: Mushroom[];
   onSelectMushroom: (mushroom: Mushroom) => void;
 }
+
+type ScannerEngineMode = 'local' | 'gemini';
 
 const PHOTO_SLOTS = [
   {
@@ -206,6 +217,12 @@ function renderSlotAngleSvg(slotIndex: number) {
 }
 
 export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelectMushroom }) => {
+  // Engine mode: 'local' (default, 100% free & offline, no API key needed) or 'gemini' (optional user-supplied temporary key)
+  const [engineMode, setEngineMode] = useState<ScannerEngineMode>('local');
+  const [sessionApiKey, setSessionApiKey] = useState<string>('');
+  const [showApiKeyInfoModal, setShowApiKeyInfoModal] = useState<boolean>(false);
+  const [showPreFilteredPreview, setShowPreFilteredPreview] = useState<boolean>(false);
+
   const [photos, setPhotos] = useState<(UploadedPhotoSlot | null)[]>([null, null, null]);
   const [activeMenuSlot, setActiveMenuSlot] = useState<number | null>(null);
   const [visibleTraits, setVisibleTraits] = useState<VisibleTraitsFilter>({
@@ -220,6 +237,16 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DeterminationResult | null>(null);
+  const [usedEngineLabel, setUsedEngineLabel] = useState<string>('');
+
+  // Ensure any old permanently stored keys from earlier prototypes are purged
+  useEffect(() => {
+    try {
+      localStorage.removeItem('gljivobook_gemini_api_key');
+    } catch {
+      // Ignore
+    }
+  }, []);
 
   const hasActiveTraitFilters =
     visibleTraits.underCap !== 'ALL' ||
@@ -305,21 +332,133 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
       return;
     }
 
+    // If user selected Google Gemini AI mode, verify they provided a temporary session key
+    const trimmedUserKey = sessionApiKey.trim();
+    if (engineMode === 'gemini' && !trimmedUserKey) {
+      setError(
+        'U aplikaciji nije trajno spremljen API ključ autora. Za Google Gemini AI dubinski skener privremeno unesite vlastiti Gemini API ključ u polje iznad (kliknite na ℹ️ Info gumb za upute kako ga besplatno preuzeti putem svog Google računa) ili koristite „🌲 Lokalni Mikološki Model (Bez API ključa)” koji radi odmah!'
+      );
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
 
     try {
-      const analysis = await runLocalMycologicalDetermination({
-        photos,
-        visibleTraits,
-        habitatNotes,
-        smellNotes,
-        bruisingNotes,
-        mushrooms,
-      });
-      setResult(analysis);
+      if (engineMode === 'gemini') {
+        const catalogSummary = preFilteredSpecies
+          .slice(0, 60)
+          .map(
+            (m) =>
+              `- ID: "${m.id}" | Naziv: ${m.name} (${m.latin}) | Status: ${m.status} | Himenij: ${m.hymenium} | Rast: ${m.growth} | Prsten/ovoj: ${m.ring} | Mlijeko: ${m.latex} | Stanište: ${m.habitat}`
+          )
+          .join('\n');
+
+        const promptText = `Ti si vrhunski hrvatski mikolog i determinator prema enciklopedijskom standardu prof. dr. sc. Romana Bošca.
+Analiziraj priložene fotografije gljive (Klobuk, Odozdo/himenij, Uzdužni prerez i baza stručka) te terenske filtre koje je korisnik označio:
+- Ispod klobuka: ${visibleTraits.underCap || 'ALL'}
+- Raste na: ${visibleTraits.growsOn || 'ALL'}
+- Dno stručka (volva): ${visibleTraits.stemBase || 'ALL'}
+- Meso na prerezu: ${visibleTraits.fleshCut || 'ALL'}
+- Stanište i drveće: ${habitatNotes || 'nije navedeno'}
+- Miris gljive: ${smellNotes || 'nije navedeno'}
+- Promjena boje mesa: ${bruisingNotes || 'nije navedeno'}
+
+Suženi popis kandidata iz baze autohtonih vrsta Hrvatske (169 vrsta):
+${catalogSummary}
+
+Vrati isključivo čist JSON objekt (bez markdown oznaka) s poljima:
+{
+  "deadlyLookalikeAlert": "string upozorenje na smrtonosne dvojnike",
+  "safetyVerdict": "string sigurnosna procjena",
+  "morphologicalAnalysis": {
+    "klobuk": "string",
+    "himenij": "string",
+    "strucakIbaza": "string",
+    "opciDojam": "string"
+  },
+  "topMatches": [
+    {
+      "matchedId": "ID vrste iz popisa",
+      "name": "Hrvatski naziv",
+      "latin": "Latinski naziv",
+      "confidence": 75,
+      "status": "SAFE | WARN | DANGER",
+      "keyTraitsObserved": "string",
+      "criticalVerification": "string"
+    }
+  ]
+}
+Pouzdanost (confidence) nikada ne smije prelaziti 90% iz sigurnosnih razloga.`;
+
+        const parts: any[] = validPhotos.map((p) => ({
+          inline_data: {
+            mime_type: p.mimeType || 'image/jpeg',
+            data: p.data.includes(',') ? p.data.split(',')[1] : p.data,
+          },
+        }));
+        parts.push({ text: promptText });
+
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(
+          trimmedUserKey
+        )}`;
+
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+            },
+          }),
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(
+            payload?.error?.message ||
+              'Google Gemini AI analiza nije uspjela. Provjerite je li uneseni API ključ ispravan ili prebacite na Lokalni mikološki model.'
+          );
+        }
+
+        const rawJsonText =
+          payload?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+        const cleanedJson = rawJsonText
+          .replace(/^```json\s*/i, '')
+          .replace(/```$/i, '')
+          .trim();
+        const parsed = JSON.parse(cleanedJson);
+
+        if (Array.isArray(parsed.topMatches)) {
+          parsed.topMatches = parsed.topMatches.slice(0, 3).map((m: any) => ({
+            ...m,
+            confidence: Math.min(90, Math.max(10, Math.round(Number(m.confidence) || 60))),
+            status:
+              m.status === 'SAFE' || m.status === 'WARN' || m.status === 'DANGER'
+                ? m.status
+                : 'WARN',
+          }));
+        }
+
+        setResult(parsed as DeterminationResult);
+        setUsedEngineLabel('Google Gemini AI Dubinski Skener (Vlastiti ključ sesije)');
+      } else {
+        const analysis = await runLocalMycologicalDetermination({
+          photos,
+          visibleTraits,
+          habitatNotes,
+          smellNotes,
+          bruisingNotes,
+          mushrooms,
+        });
+        setResult(analysis);
+        setUsedEngineLabel('Lokalni Mikološki Model (Božac Offline Engine • Bez API ključa)');
+      }
     } catch (err: any) {
-      setError(err?.message || 'Greška pri lokalnoj analizi.');
+      setError(err?.message || 'Greška pri analizi.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -343,40 +482,204 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
 
   return (
     <div className="space-y-6">
-      {/* Header banner */}
-      <div className="rounded-2xl bg-[#121c16] border border-[#233529] p-5 sm:p-6">
+      {/* Header & Dual Engine Selector (Local Model without API vs Optional User Google Gemini AI) */}
+      <div className="rounded-2xl bg-[#121c16] border border-[#233529] p-5 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-[11px] font-semibold text-emerald-300">
                 <WifiOff className="w-3.5 h-3.5 text-emerald-400" />
-                100% Offline u šumi bez signala
+                Lokalni model radi 100% bez API ključa i offline
               </span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0d1812] border border-[#263c2e] text-[11px] font-medium text-[#9bb0a2]">
                 <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                Besplatni lokalni Božac Engine (bez API ključa)
+                Bez trajno spremljenog API ključa u aplikaciji
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-serif-display font-bold text-[#f2f6f3]">
-              Terenski Mikološki Determinator (Analiza iz 3 kuta)
+              Terenski Mikološki Determinator &amp; AI Skener (3 kuta)
             </h2>
-            <p className="text-sm text-[#9bb0a2] max-w-3xl">
-              Prvo označite obilježja koja vidite uživo (sužava 80% gljiva prije kamere), a zatim snimite gljivu iz 3 kuta (klobuk, odozdo, uzdužni prerez s bazom).
+            <p className="text-xs sm:text-sm text-[#9bb0a2] max-w-3xl">
+              Prvo označite obilježja koja vidite uživo (sužava 80% gljiva u 4 klika), pregledajte suženi izbor vrsta te pokrenite ugrađeni <strong>Lokalni mikološki model (bez API ključa)</strong> ili opcionalno povežite <strong>vlastiti Google Gemini API ključ</strong> za dubinsku AI analizu slike.
             </p>
           </div>
           {(result || hasActiveTraitFilters) && (
             <button
+              type="button"
               onClick={resetScanner}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1c2b21] hover:bg-[#263a2d] text-sm font-medium text-[#e2ece5] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1c2b21] hover:bg-[#263a2d] text-xs sm:text-sm font-medium text-[#e2ece5] transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
               Poništi sve
             </button>
           )}
         </div>
+
+        {/* Engine Mode Switcher Tabs */}
+        <div className="pt-2 border-t border-[#1e3024] space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                setEngineMode('local');
+                setError(null);
+              }}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-3 ${
+                engineMode === 'local'
+                  ? 'bg-[#18291f] border-emerald-500 ring-1 ring-emerald-500/40'
+                  : 'bg-[#0c140f] border-[#223428] hover:border-[#344f3d]'
+              }`}
+            >
+              <Cpu className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs sm:text-sm font-bold text-[#f2f6f3] flex items-center gap-2">
+                  <span>🌲 Lokalni Mikološki Model (Zadano)</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-600 text-[10px] font-bold text-white">
+                    BEZ API KLJUČA
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#9bb0a2] mt-1 leading-relaxed">
+                  Radi odmah na svakom uređaju i u šumi bez interneta. Koristi 4 morfološka filtra + lokalnu spektralnu analizu boja i kontrasta s fotografija.
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEngineMode('gemini');
+                setError(null);
+              }}
+              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-3 ${
+                engineMode === 'gemini'
+                  ? 'bg-[#18291f] border-amber-500 ring-1 ring-amber-500/40'
+                  : 'bg-[#0c140f] border-[#223428] hover:border-[#344f3d]'
+              }`}
+            >
+              <Sparkles className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs sm:text-sm font-bold text-[#f2f6f3] flex items-center gap-2">
+                  <span>✨ Google Gemini AI Skener</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-[10px] font-bold text-amber-300">
+                    VLASTITI KLJUČ
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#9bb0a2] mt-1 leading-relaxed">
+                  Dubinska AI vizualna analiza pomoću vašeg Google računa / vlastitog Gemini API ključa (bez trajnog spremanja ključa u aplikaciju).
+                </p>
+              </div>
+            </button>
+          </div>
+
+          {/* Google Gemini AI Configuration Panel (only shown when 'gemini' mode is selected) */}
+          {engineMode === 'gemini' && (
+            <div className="rounded-xl bg-[#0c140f] border border-amber-500/40 p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-start gap-2.5">
+                  <KeyRound className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs sm:text-sm font-bold text-[#f2f6f3]">
+                      Povezivanje s vašim Google Gemini API ključem (Samo za trenutnu sesiju)
+                    </div>
+                    <p className="text-[11px] text-[#9bb0a2]">
+                      U aplikaciji nije ugrađen trajni API ključ autora. AI dubinski skener radi samo kada povežete svoj Google račun ili privremeno zalijepite vlastiti besplatni Gemini API ključ.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Info Button explaining how to get a free Gemini API key */}
+                <button
+                  type="button"
+                  onClick={() => setShowApiKeyInfoModal(!showApiKeyInfoModal)}
+                  className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-[#18291f] hover:bg-[#22382b] border border-amber-500/45 text-xs font-semibold text-amber-300 inline-flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors"
+                >
+                  <Info className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Kako do besplatnog Gemini API ključa?</span>
+                </button>
+              </div>
+
+              {/* Step-by-step Info Box on how to get a Gemini API key with a Google Account */}
+              {showApiKeyInfoModal && (
+                <div className="p-4 rounded-xl bg-[#121e16] border border-emerald-500/40 space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-emerald-400 uppercase tracking-wider">
+                      ℹ️ Upute: Kako besplatno preuzeti svoj Google Gemini API ključ u 30 sekundi
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKeyInfoModal(false)}
+                      className="p-1 rounded-lg bg-[#18291f] text-[#9bb0a2] hover:text-white cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <ol className="list-decimal list-inside space-y-1.5 text-[#d6e3da] leading-relaxed">
+                    <li>
+                      Otvorite službenu Google stranicu:{' '}
+                      <a
+                        href="https://aistudio.google.com/apikey"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-400 underline font-semibold inline-flex items-center gap-1"
+                      >
+                        aistudio.google.com/apikey <ExternalLink className="w-3 h-3" />
+                      </a>{' '}
+                      i prijavite se svojim standardnim <strong>Google (Gmail) računom</strong>.
+                    </li>
+                    <li>
+                      Kliknite na plavi gumb <strong>„Create API key”</strong> (Izradi API ključ). Google za osobnu upotrebu nudi besplatni paket (Free Tier).
+                    </li>
+                    <li>
+                      Kopirajte generirani niz znakova (počinje s <code className="px-1.5 py-0.5 rounded bg-[#0b130e] text-amber-300">AIza...</code>) i zalijepite ga u polje ispod.
+                    </li>
+                    <li>
+                      <strong>100% privatno i bez trajnog spremanja:</strong> Ključ se drži isključivo u radnoj memoriji dok vam je stranica otvorena i automatski se briše zatvaranjem kartice.
+                    </li>
+                  </ol>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
+                <div className="md:col-span-8 flex items-center gap-2">
+                  <input
+                    type="password"
+                    value={sessionApiKey}
+                    onChange={(e) => setSessionApiKey(e.target.value)}
+                    placeholder="Privremeno zalijepite svoj Gemini API ključ (AIza...)"
+                    className="w-full min-h-[42px] px-3.5 py-2 rounded-xl bg-[#121e16] border border-[#2a4233] text-xs sm:text-sm text-[#f2f6f3] placeholder-[#6e8476] focus:outline-none focus:border-amber-500"
+                  />
+                  {sessionApiKey && (
+                    <button
+                      type="button"
+                      onClick={() => setSessionApiKey('')}
+                      className="min-h-[42px] px-3 py-2 rounded-xl bg-red-950/50 hover:bg-red-900/60 border border-red-800/50 text-xs font-semibold text-red-200 shrink-0 cursor-pointer"
+                      title="Odmah ukloni ključ iz radne memorije"
+                    >
+                      Obriši
+                    </button>
+                  )}
+                </div>
+
+                <div className="md:col-span-4 flex flex-wrap items-center gap-2">
+                  <a
+                    href="https://aistudio.google.com/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full min-h-[42px] px-3.5 py-2 rounded-xl bg-[#18291f] hover:bg-[#223a2c] border border-emerald-500/40 text-xs font-semibold text-emerald-300 inline-flex items-center justify-center gap-1.5 transition-colors"
+                    title="Prijavite se Google računom i preuzmite svoj besplatni Gemini API ključ"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Preuzmi ključ (Google račun)</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* KORAK PRIJE KAMERE: Brzi morfološki filtar („Obilježja koja vidiš”) */}
+      {/* KORAK PRIJE KAMERE: Brzi morfološki filtar („Obilježja koja vidiš”) + Suženi pregled vrsta */}
       <div className="rounded-2xl bg-[#121c16] border border-[#233529] p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -385,9 +688,28 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
               Obilježja koja vidiš (Brzi morfološki filtar prije kamere)
             </h3>
           </div>
-          <span className="px-2.5 py-1 rounded-lg bg-[#0c140f] border border-[#24382b] text-xs font-mono-tabular font-semibold text-emerald-400">
-            Odgovara: {preFilteredSpecies.length} / {mushrooms.length} vrsta
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-1 rounded-lg bg-[#0c140f] border border-[#24382b] text-xs font-mono-tabular font-semibold text-emerald-400">
+              Suženi izbor: {preFilteredSpecies.length} / {mushrooms.length} vrsta
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowPreFilteredPreview(!showPreFilteredPreview)}
+              className="min-h-[32px] px-3 py-1 rounded-lg bg-[#18291f] hover:bg-[#223a2c] border border-emerald-500/40 text-xs font-semibold text-emerald-300 inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Eye className="w-3.5 h-3.5 text-amber-400" />
+              <span>
+                {showPreFilteredPreview
+                  ? 'Sakrij sužene vrste'
+                  : `Pregledaj sužene vrste (${preFilteredSpecies.length})`}
+              </span>
+              {showPreFilteredPreview ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -515,6 +837,61 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
             </div>
           </div>
         </div>
+
+        {/* Instant Preview Grid of Pre-Filtered Candidate Species */}
+        {showPreFilteredPreview && (
+          <div className="pt-3 border-t border-[#1e3024] space-y-3">
+            <div className="flex items-center justify-between text-xs text-[#9bb0a2]">
+              <span>
+                Izravni pregled suženih kandidata prema označenim morfološkim obilježjima (prikazano prvih{' '}
+                {Math.min(12, preFilteredSpecies.length)} od {preFilteredSpecies.length}):
+              </span>
+            </div>
+            {preFilteredSpecies.length === 0 ? (
+              <div className="p-4 rounded-xl bg-[#0c140f] border border-[#223428] text-xs text-[#9bb0a2]">
+                Niti jedna vrsta u bazi ne odgovara ovoj kombinaciji svih 4 obilježja. Pokušajte isključiti jedno obilježje.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                {preFilteredSpecies.slice(0, 12).map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => onSelectMushroom(m)}
+                    className="p-2.5 rounded-xl bg-[#0c140f] hover:bg-[#16241b] border border-[#223428] text-left transition-colors cursor-pointer flex items-center gap-2.5"
+                  >
+                    <div className="w-11 h-11 rounded-lg overflow-hidden shrink-0 border border-[#263c2e]">
+                      <MushroomImage mushroom={m} className="w-full h-full" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-[#f2f6f3] truncate">
+                        {m.name}
+                      </div>
+                      <div className="text-[10px] italic text-[#889e90] truncate">
+                        {m.latin}
+                      </div>
+                      <div
+                        className={`text-[10px] font-semibold mt-0.5 ${
+                          m.status === 'DANGER'
+                            ? 'text-red-400'
+                            : m.status === 'WARN'
+                            ? 'text-amber-400'
+                            : 'text-emerald-400'
+                        }`}
+                      >
+                        {m.status === 'DANGER'
+                          ? '🔴 Otrovna'
+                          : m.status === 'WARN'
+                          ? '🟡 Uvjetno'
+                          : '🟢 Jestiva'}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 3-Angle Photo Upload Grid — Always 1 Horizontal Row (grid-cols-3) */}
@@ -538,7 +915,6 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
               >
                 {uploaded ? (
                   <>
-                    {/* Captured Image Full Preview */}
                     <img
                       src={uploaded.data}
                       alt={slot.title}
@@ -546,7 +922,6 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/50" />
 
-                    {/* Top Status Row: "✓ Snimljeno" + Delete Button */}
                     <div className="relative z-10 p-2 sm:p-3 flex items-center justify-between gap-1">
                       <span className="px-2 py-0.5 rounded-md bg-emerald-600/95 text-[10px] sm:text-xs font-bold text-white shadow-sm">
                         ✓ Snimljeno
@@ -562,7 +937,6 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
                       </button>
                     </div>
 
-                    {/* Bottom Label + Replace Prompt */}
                     <div className="relative z-10 p-2.5 sm:p-3.5 text-left">
                       <div className="text-xs sm:text-sm font-bold text-white leading-tight">
                         {slot.title}
@@ -583,7 +957,6 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
                       </div>
                     </div>
 
-                    {/* Minimalist Angle SVG Illustration */}
                     <div className="my-2 sm:my-3 flex items-center justify-center">
                       {renderSlotAngleSvg(idx)}
                     </div>
@@ -601,7 +974,7 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
           })}
         </div>
 
-        {/* Quick Capture Menu ("📷 Uslikaj kamerom" or "🖼️ Odaberi iz galerije") when any of the 3 slots is clicked */}
+        {/* Quick Capture Menu */}
         {activeMenuSlot !== null && (
           <div className="rounded-2xl bg-[#14221a] border border-emerald-500/50 p-3.5 sm:p-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -706,7 +1079,9 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
 
         <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <p className="text-xs text-[#889e90]">
-            Analizator kombinira odabrana obilježja i piksele fotografije sa svih {mushrooms.length} vrsta Hrvatske.
+            {engineMode === 'local'
+              ? `Aktivan način: 🌲 Lokalni Mikološki Model (bez API ključa, uspoređuje ${preFilteredSpecies.length} kandidata).`
+              : `Aktivan način: ✨ Google Gemini AI Dubinski Skener (koristi isključivo vaš privremeni ključ sesije).`}
           </p>
           <button
             type="button"
@@ -715,7 +1090,11 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
             className="min-h-[48px] px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-sm font-semibold text-white inline-flex items-center justify-center gap-2.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />
-            {isAnalyzing ? 'Mikološka analiza u tijeku...' : 'Pokreni terensku determinaciju'}
+            {isAnalyzing
+              ? 'Mikološka analiza u tijeku...'
+              : engineMode === 'gemini'
+              ? 'Pokreni Google Gemini AI analizu'
+              : 'Pokreni lokalnu determinaciju (Bez API-ja)'}
           </button>
         </div>
       </div>
@@ -723,6 +1102,14 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
       {/* Analysis Results */}
       {result && (
         <div className="space-y-5">
+          {/* Engine Attribution Pill */}
+          {usedEngineLabel && (
+            <div className="px-3.5 py-2 rounded-xl bg-[#18291f] border border-emerald-500/40 text-xs font-mono-tabular text-emerald-300 flex items-center justify-between gap-2">
+              <span>IZVOR ANALIZE: {usedEngineLabel}</span>
+              <span>Suženo iz {preFilteredSpecies.length} vrsta</span>
+            </div>
+          )}
+
           {/* Deadly Lookalike Warning Banner */}
           <div className="rounded-2xl bg-red-950/40 border border-red-800/60 p-5">
             <div className="flex items-start gap-3">
@@ -789,7 +1176,10 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
                   return false;
                 });
 
-                const cappedConfidence = Math.min(90, Math.max(1, Math.round(Number(match.confidence) || 50)));
+                const cappedConfidence = Math.min(
+                  90,
+                  Math.max(1, Math.round(Number(match.confidence) || 50))
+                );
 
                 return (
                   <div

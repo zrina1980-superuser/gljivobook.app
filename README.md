@@ -14,7 +14,7 @@
 
 Spaja klasičnu mikološku taksonomiju i morfološke opise prema standardu prof. dr. sc. Romana Bošca s modernim terenskim alatima:
 - **Dvostruki sustav tema (`☀️ / 🌙`):** Tamna šumska tema i svijetla **„Paperlike / Terenski dnevnik”** tema za čitanje na jakom suncu bez odbljeska, uz gumb **`Aa`** (*100% -> 120% -> Visoki kontrast*).
-- **100% Offline Terenski Mikološki Determinator (`offlineDeterminator.ts`):** Uključuje **Brzi morfološki filtar prije kamere („Obilježja koja vidiš”)** koji u 4 klika sužava 80% gljiva te lokalnu spektralnu i morfološku analizu fotografija iz 3 kuta bez interneta.
+- **Dvostruki Terenski Determinator (`offlineDeterminator.ts` + Opcionalni Google Gemini AI Skener):** Zadani **Lokalni Mikološki Model (Božac Offline Engine)** radi 100% besplatno i izvan mreže bez API ključa uz **Brzi morfološki filtar prije kamere („Obilježja koja vidiš”)** s trenutačnim pregledom suženih vrsta (`👁️ Pregledaj sužene vrste`), dok napredni **Google Gemini AI Dubinski Skener** omogućuje opcionalno povezivanje vlastitog Google računa (AI Studio) ili privremeni unos vlastitog Gemini API ključa samo za tekuću sesiju (bez trajnog spremanja autorskog ključa u aplikaciji) uz ugrađeni **`ℹ️ Kako do besplatnog Gemini API ključa?`** vodič.
 - **169 autohtonih vrsta Hrvatske s hrvatskim narodnim imenima (`folkNames`), pametnim razvrstavanjem (`⭐ Favoriti` vs `A–Z`), cjelogodišnjom matricom „Upozorenje tjedna” i mikoriznim filtrom po stablima (`🌲 Ispod stabla`).**
 - **Službeni SOS protokol Centra za kontrolu otrovanja pri Institutu za medicinska istraživanja i medicinu rada (IMI) (`+385 1 2348 342` / `112`)** s razlikovanjem sindroma kratke (< 6 h) i duge latencije (6–24 h+).
 - **Satelitski i topografski GPS dnevnik nalazišta (`Leaflet`), „Outdoor Field Log” generator kartice ulova (`1080×1350 px`), GPS lokator parkiranog automobila (`🚗 Gdje mi je auto?`), praćenje dnevnog limita berbe (3 kg), dinamička evidencija dozvole Hrvatskih šuma te mikološki kviz sustav (baza 60 pitanja Set A & B, runda od 30 pitanja kroz 5 rangova, 3 terenska jokera, High-Score Lock, „Mala škola mikologije” i Gljivarska iskaznica s QR verifikacijskim pečatom).**
@@ -38,15 +38,16 @@ Spaja klasičnu mikološku taksonomiju i morfološke opise prema standardu prof.
 - **Preklopnik teme (`☀️ / 🌙` u zaglavlju):** Omogućuje trenutno prebacivanje između zadane **Tamne šumske teme** (`#0b110e`) i **Svijetle „Paperlike / Terenski dnevnik” teme** (`#f6f4ee` topla papirnata podloga, `#ffffff` kartice, `#151a16` ugljeno-crni tekst) optimizirane za vanjsku upotrebu na suncu bez odbljeska.
 - **Višestupanjska pristupačnost (`Aa`):** Tri razine čitljivosti (*Normalno 100% -> Krupno 120% -> Visoki kontrast za jako sunce*).
 
-### 3. 📸 100% Offline Terenski Mikološki Determinator + Brzi Filtar Prije Kamere (`AIScannerView.tsx` & `offlineDeterminator.ts`)
-- **Korak prije kamere — „Obilježja koja vidiš” (sužava 80% gljiva u 4 klika):**
+### 3. 📸 Dvostruki Terenski Determinator: Lokalni Offline Model + Opcionalni Google Gemini AI Skener (`AIScannerView.tsx`, `offlineDeterminator.ts`, `server.ts`)
+- **Brzi morfološki filtar prije kamere — „Obilježja koja vidiš” + Pregled suženih vrsta (`👁️ Pregledaj sužene vrste`):**
   1. **Ispod klobuka:** `Listići` / `Cjevčice (spužva)` / `Bodljice` / `Trubasto`
   2. **Raste na:** `Tlu` / `Panju ili deblu`
   3. **Dno stručka:** `Ima vrećicu (volvu)` / `Nema vrećice`
   4. **Meso na prerezu:** `Mijenja boju (plavi, crveni)` / `Ne mijenja` / `Pušta mlijeko`
-- **Analiza iz 3 kuta bez interneta i bez API ključa:**
-  - Za svaki od 3 obvezna koraka (*1. Klobuk*, *2. Odozdo*, *3. Prerez i baza*) dostupni su gumbi **`📷 Uslikaj kamerom`** (`capture="environment"`) i **`🖼️ Odaberi iz galerije`**.
-  - Lokalni Božac Engine kombinira odabrana obilježja, spektralnu analizu boja s fotografija i terenske bilješke sa svih 169 vrsta u bazi uz maksimalnu pouzdanost ograničenu na **90%** i obavezno upozorenje na smrtonosne dvojnike.
+- **Način A — 🌲 Lokalni Mikološki Model (Zadano • BEZ API KLJUČA):**
+  - Radi 100% besplatno i izvan mreže kombinirajući odabrana obilježja, spektralnu analizu boja s fotografija (*1. Klobuk*, *2. Odozdo*, *3. Prerez i baza*) i terenske bilješke sa svih 169 vrsta u bazi uz maksimalnu pouzdanost ograničenu na **90%**.
+- **Način B — ✨ Google Gemini AI Dubinski Skener (Opcionalno • VLASTITI KLJUČ / GOOGLE RAČUN):**
+  - U aplikaciji **nije trajno spremljen nikakav autorski API ključ**. Posjetitelj može povezati vlastiti Google račun putem AI Studija (`🔗 Poveži Google račun`) ili privremeno unijeti vlastiti besplatni Gemini API ključ isključivo za tekuću sesiju (uz ugrađeni **`ℹ️ Kako do besplatnog Gemini API ključa?`** vodič u 4 koraka).
 
 ### 4. 🍽️ Kulinarski Modul i Toksikološke Upute (`MushroomDetailModal.tsx`)
 - **Provjereni recepti prilagođeni rodu gljive:** Za svaku jestivu (`SAFE`) i uvjetno jestivu (`WARN`) vrstu generiraju se 3 ciljana kulinarska recepta i upute za konzerviranje.

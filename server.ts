@@ -8,16 +8,15 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: '25mb' }));
+app.use(express.json({ limit: '10mb' }));
 
-// Health check endpoint (100% free & key-free architecture; determination runs locally/offline on device)
+// Health check endpoint — 100% free & offline-ready without any server-side API keys
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
     app: 'gljivobook.app',
     version: '3.3.0',
     offlineEngine: true,
-    requiresApiKey: false,
   });
 });
 
