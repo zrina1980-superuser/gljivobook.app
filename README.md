@@ -117,6 +117,10 @@ npm start
 - [Tehnička arhitektura](./ARCHITECTURE.md)
 - [Povijest promjena](./CHANGELOG.md)
 
+## Licenca
+
+Izvorni kod ovog projekta licenciran je pod MIT licencom; pogledaj [LICENSE](./LICENSE). Fotografije i drugi sadržaji trećih strana nisu obuhvaćeni tom licencom i ostaju pod svojim uvjetima korištenja i atribucije.
+
 ## Neobavezna podrška
 
 Ako ti je ovaj projekt bio koristan, možeš po želji podržati njegov daljnji razvoj na [Ko-fi](https://ko-fi.com/zrina).
