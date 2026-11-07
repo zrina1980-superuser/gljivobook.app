@@ -63,7 +63,6 @@ export default defineConfig(() => {
           skipWaiting: true,
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
-          globIgnores: ['**/assets/aistudio/**'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/upload\.wikimedia\.org\/.*/i,
@@ -196,4 +195,3 @@ export default defineConfig(() => {
     },
   };
 });
-

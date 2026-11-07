@@ -206,19 +206,19 @@ export const AboutModal: React.FC<AboutModalProps> = ({
             <span>🔒 Privatnost, kolačići i licence</span>
           </div>
           <p className="text-xs text-[#c2d4c8] leading-relaxed">
-            <strong>100% lokalna privatnost bez kolačića za praćenje:</strong> Aplikacija{' '}
-            <strong>gljivobook.app</strong> ne koristi kolačiće za praćenje (tracking cookies),
-            analitiku trećih strana niti šalje vaše GPS lokacije na poslužitelj. Svi unosi u
-            terenski dnevnik, tajne GPS koordinate nalazišta, fotografije ulova, pinovi parkiranog
-            automobila i pohranjene šumske dozvole spremaju se isključivo lokalno u{' '}
-            <code className="text-emerald-300 font-mono">IndexedDB</code> bazi na vašem uređaju.
+            <strong>Lokalna pohrana i vanjske usluge:</strong> Aplikacija ne koristi kolačiće za
+            praćenje ni analitiku trećih strana. Terenski dnevnik, GPS koordinate nalazišta,
+            fotografije ulova, pinovi parkiranog automobila i šumske dozvole spremaju se lokalno u{' '}
+            <code className="text-emerald-300 font-mono">IndexedDB</code> na vašem uređaju. Pri
+            korištenju GPS-a, karte ili prognoze potrebni podaci šalju se vanjskim pružateljima tih
+            usluga. Opcionalni Gemini skener šalje odabrane fotografije i vaš ključ za analizu.
           </p>
           <p className="text-xs text-[#9bb0a2] leading-relaxed">
-            <strong>Creative Commons atribucija i stručni izvori:</strong> Fotografije vrsta u atlasu
-            preuzete su putem otvorenih API servisa iNaturalist i Wikimedia Commons pod slobodnim
-            Creative Commons licencama (CC-BY / CC-BY-SA / CC0). Poveznica na izvornog autora i
-            licencu dostupna je u detaljima svakog pojedinog uzorka. Taksonomska podjela i morfološki
-            opisi temelje se na stručnoj literaturi prof. dr. sc. Romana Bošca (
+            <strong>Izvori fotografija i stručna literatura:</strong> Fotografije vrsta dohvaćaju se
+            iz Wikipedije, iNaturalist i Wikimedia Commons. Licence i autorski uvjeti razlikuju se
+            po fotografiji; trenutačna poveznica otvara sliku i ne mora prikazivati potpunu
+            atribuciju. Provjerite uvjete na izvornom zapisu prije ponovne uporabe. Taksonomska
+            podjela i morfološki opisi temelje se na stručnoj literaturi prof. dr. sc. Romana Bošca (
             <em>Enciklopedija gljiva, Svezak 1 i 2</em>).
           </p>
         </div>

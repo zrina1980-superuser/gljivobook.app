@@ -405,9 +405,9 @@ export const MushroomDetailModal: React.FC<MushroomDetailModalProps> = ({
             rel="noopener noreferrer"
             className="hover:text-emerald-300 transition-colors inline-flex items-center gap-1.5 break-all"
           >
-            <span>📷 Izvor fotografije: Wikimedia Commons / iNaturalist (CC-BY-SA)</span>
+            <span>📷 Fotografija: Wikimedia Commons / iNaturalist / Wikipedia</span>
             <span className="text-emerald-400 underline underline-offset-2 font-semibold inline-flex items-center gap-1 whitespace-nowrap">
-              <span>Izvorni URL slike</span>
+              <span>Otvori sliku · provjeri licencu prije ponovne uporabe</span>
               <ExternalLink className="w-3 h-3 shrink-0" />
             </span>
           </a>

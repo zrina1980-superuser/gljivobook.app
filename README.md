@@ -2,6 +2,8 @@
 
 > **by Zrina • Terenski priručnik & dnevnik**
 >
+> **Pokreni aplikaciju:** [gljivobook.zrina.app](https://gljivobook.zrina.app/)
+>
 > **Autor i razvoj:** Vedran Zrinski (**Zrina**)  
 > **Kontakt za suradnju i prijavu grešaka:** [gljivobook@zrina.app](mailto:gljivobook@zrina.app)  
 > **Stručni temelj:** *Enciklopedija gljiva* (Svezak 1 i 2), prof. dr. sc. Romano Božac.
@@ -73,25 +75,27 @@ Spaja klasičnu mikološku taksonomiju i morfološke opise prema standardu prof.
 
 ## 🚑 SOS Protokol u slučaju sumnje na trovanje gljivama
 
-- **Hitne službe (0–24 h):** **`112 / 194`**
-- **Centar za kontrolu otrovanja pri Institutu za medicinska istraživanja i medicinu rada (IMI)** (*Poison Control Centre at the Institute for Medical Research and Occupational Health (IMI)*): **`+385 1 2348 342`**
-- **Vrijeme reakcije (latencija simptoma):**
-  - **Simptomi unutar 6 sati:** *Sindrom kratke latencije* — uglavnom probavne smetnje, mučnina, grčevi. Piti tekućinu, javiti se liječniku.
-  - **Simptomi nakon 6 do 24 sata (ili više dana):** *Sindrom duge latencije* — **HITNO NA HITNU!** Karakteristično za najopasnije gljive (*zelena pupavka, rebrasta patuljica, koprenke*). Otrov je već prešao u krv i napada jetru i bubrege.
-  - **Napomena:** U bolnicu obavezno ponijeti ostatke gljiva ili otpatke od čišćenja iz kante za smeće.
+- **Ne čekaj simptome:** Kod sumnje na trovanje odmah nazovi Centar za kontrolu otrovanja (CKO) pri Institutu za medicinska istraživanja i medicinu rada (IMI), dostupan 0–24 na **`+385 1 2348 342`**, i slijedi njihove upute. U hitnom slučaju nazovi **`112`** ili **`194`**.
+- Nemoj izazivati povraćanje niti davati velike količine vode, osim ako ti to izričito ne savjetuje zdravstveni stručnjak. Sačuvaj ostatke gljiva ili obroka za moguću identifikaciju.
+- [Službene upute Centra za kontrolu otrovanja (IMI)](https://www.imi.hr/hr/2020/31/03/korisno-je-kontaktirati-cko/).
 
 ---
 
 ## 🚀 Brze upute za pokretanje
 
+Potreban je Node.js 22.12 ili noviji. npm je podržani package manager.
+
 ```bash
 # 1. Instalacija ovisnosti
-npm install
+npm ci
 
 # 2. Pokretanje razvojnog poslužitelja (Express + Vite na portu 3000)
 npm run dev
 
-# 3. Produkcijski build
+# 3. TypeScript provjera
+npm run lint
+
+# 4. Produkcijski build
 npm run build
 npm start
 ```
@@ -100,13 +104,18 @@ npm start
 
 ## 🔒 Privatnost, kolačići, atribucija slika i pravni disclaimer
 
-- **100% lokalna privatnost (`IndexedDB`):** Aplikacija **gljivobook.app** ne koristi kolačiće za praćenje niti šalje GPS lokacije na poslužitelj. Svi dnevnici nalaza, pinovi parkiranog automobila i dozvole Hrvatskih šuma spremaju se isključivo lokalno na uređaju korisnika.
-- **Creative Commons atribucija fotografija (`CC-BY-SA`):** Ispod glavne fotografije svake vrste u `MushroomDetailModal.tsx` nalazi se diskretna oznaka izvora (`📷 Izvor fotografije: Wikimedia Commons / iNaturalist (CC-BY-SA)`) s izravnom poveznicom na izvorni URL slike.
+- **Lokalna pohrana:** Dnevnici nalaza, pinovi parkiranog automobila i dozvole Hrvatskih šuma spremaju se na uređaju korisnika. Kada koristiš GPS, karte ili prognozu, koordinate se šalju odgovarajućim vanjskim pružateljima usluga; fotografije se šalju Googleu samo ako izričito pokreneš opcionalni Gemini skener.
+- **Izvori fotografija:** Fotografije se dohvaćaju iz Wikipedije, iNaturalist i Wikimedia Commons. Licence i atribucijski uvjeti ovise o pojedinoj fotografiji; poveznica u aplikaciji otvara sliku, ne nužno punu stranicu s autorom i licencom. Provjeri uvjete na izvornom zapisu prije ponovne uporabe.
 - **Upozorenje o sigurnosti:** Aplikacija **gljivobook.app** služi isključivo kao pomoćni terenski i edukativni priručnik. Niti jedna fotografija, interaktivni vizualni ključ niti determinator ne mogu jamčiti 100% sigurnost identifikacije niti mogu zamijeniti pregled ubrane gljive uživo od strane stručnog determinatora ili mikologa. Konzumacija samoniklih gljiva je isključivo na vlastitu odgovornost. U slučaju sumnje na trovanje odmah nazovite **Centar za kontrolu otrovanja pri Institutu za medicinska istraživanja i medicinu rada (IMI) / Poison Control Centre at the Institute for Medical Research and Occupational Health (IMI) na broj `+385 1 2348 342`** ili **112**.
 
 ---
 
 *gljivobook.app by Zrina v3.3 PRO • Kontakt: gljivobook@zrina.app • Medvednica & Zagorje*
+
+## 📚 Dokumentacija
+
+- [Tehnička arhitektura](./ARCHITECTURE.md)
+- [Povijest promjena](./CHANGELOG.md)
 
 ## Neobavezna podrška
 
