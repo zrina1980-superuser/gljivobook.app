@@ -107,3 +107,7 @@ npm start
 ---
 
 *gljivobook.app by Zrina v3.3 PRO • Kontakt: gljivobook@zrina.app • Medvednica & Zagorje*
+
+## Neobavezna podrška
+
+Ako ti je ovaj projekt bio koristan, možeš po želji podržati njegov daljnji razvoj na [Ko-fi](https://ko-fi.com/zrina).
