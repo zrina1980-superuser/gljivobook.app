@@ -10,15 +10,15 @@ Ovaj dokument pruža detaljan uvid u softversku arhitekturu sustava **gljivobook
 
 | Sloj | Tehnologija | Uloga u sustavu |
 | :--- | :--- | :--- |
-| **Frontend UI** | **React 19** + **TypeScript** | Modularno SPA sučelje s funkcionalnim komponentama, navigacijskim stogom (`modalHistory`), kulinarskim modulom, „Malom školom mikologije” i 1-na-1 modalom usporedbe dvojnica. |
+| **Frontend UI & Navigacija** | **React 19** + **TypeScript** + **`backNavigation.ts`** | Modularno SPA sučelje s centraliziranim upravljanjem Back navigacijom (`popstate`, vidljivi Back gumbi, rubni swipe i `Escape`), navigacijskim stogom (`modalHistory`), obnovom skrolanja, kulinarskim modulom i 1-na-1 usporedbom dvojnica. |
 | **Sustav tema & Stiliziranje** | **Tailwind CSS v4** (`@tailwindcss/vite`) + **CSS Custom Properties** | Dvostruka tema (`gljivo_theme` u `localStorage`): zadana **Tamna šumska** (`#0b110e` / `#121c16`) i **Svijetla Paperlike / Terenski dnevnik** (`#f6f4ee` / `#ffffff` / `#151a16`) za čitanje na suncu bez odbljeska, uz pristupačnost `Aa` (*Normalno -> Krupno 120% -> Visoki kontrast*). |
 | **Build & PWA** | **Vite 8** + **vite-plugin-pwa** (**Workbox**) | Generiranje Service Workera, manifesta i `CacheFirst` / `NetworkFirst` strategija za potpuni offline rad u šumi bez signala. |
-| **Lokalni & Gemini Determinator** | **Božac Offline Engine** (`offlineDeterminator.ts`) + **Opcionalni `@google/genai` (`gemini-3-flash-preview`)** | Zadana 100% besplatna klijentska determinacija bez API ključeva (4 brza morfološka filtra + pregled suženih vrsta + Canvas HSV/RGB analiza) uz opcionalni Gemini AI skener putem korisnikovog Google računa ili privremenog ključa sesije. |
+| **Lokalni & Gemini Determinator** | **Božac Offline Engine** (`offlineDeterminator.ts`) + **Opcionalni Gemini REST API (`gemini-3-flash-preview`)** | Zadana 100% besplatna klijentska determinacija bez API ključeva (4 brza morfološka filtra + pregled suženih vrsta + Canvas HSV/RGB analiza) uz opcionalni Gemini AI skener putem korisnikovog ključa spremljenog lokalno na uređaju (`geminiKeyStorage.ts`) ili Google računa. |
 | **Kviz Motor & Skripta** | **Quiz Engine** (`quizEngine.ts`, `quizQuestions.ts`) + **High-Score Lock** | Baza od 60 pitanja (5 rangova × Set A & Set B), progresivni generator runde od 30 pitanja (3A + 3B po rangu), 3 terenska jokera (`50:50`, `Savjet prof. Bošca`, `Sigurnosna košara`), trajno zaključavanje rekorda (`gljivobook_quiz_record`) i 5-poglavna *Terenska skripta za štrebere*. |
-| **Poslužitelj** | **Node.js** + **Express** (`server.ts`) | Poslužitelj na portu `3000` koji poslužuje SPA aplikaciju, `/api/health` i opcionalnu `/api/analyze-mushroom` rutu koja se izvršava isključivo uz korisnikov privremeni Gemini API ključ (bez trajnog autorskog ključa). |
+| **Poslužitelj** | **Node.js** + **Express** (`server.ts`) | Poslužitelj na portu `3000` koji poslužuje SPA aplikaciju i `/api/health` bez ikakvog poslužiteljskog ili autorskog API ključa. |
 | **Meteorološki API** | **Open-Meteo API** (`weatherService.ts`) | Dohvat 10-dnevnih oborina, vlažnosti i temperature tla na 0 cm, zalaska sunca (`sunset`) te 5-dnevne prognoze za Gljivarski indeks pogodnosti (0–100%). |
 | **Kartografija & GIS** | **Leaflet** + **GPX 1.1 XML** + **Nominatim / Open-Meteo DEM** | Satelitska (*ESRI World Imagery*) i topografska (*OpenTopoMap*) šumska karta s `IndexedDB` pinovima, automatskim dohvatom nadmorske visine i naselja te `.gpx` serijalizatorom. |
-| **Klijentska baza** | **IndexedDB** (`storageService.ts`) + **localStorage** | Asinkrona lokalna pohrana za korisničke fotografije (`photoData`), terenski dnevnik, GPS parking vozila, PDF/sliku dozvole Hrvatskih šuma, selfie portret iskaznice, keš slika i zaključani rekord kviza (`gljivobook_quiz_record`). |
+| **Klijentska baza** | **IndexedDB** (`storageService.ts`) + **localStorage** | Asinkrona lokalna pohrana za korisničke fotografije (`photoData`), terenski dnevnik, GPS parking vozila, PDF/sliku dozvole Hrvatskih šuma, selfie portret iskaznice, keš slika, zaključani rekord kviza (`gljivobook_quiz_record`) i opcionalni korisnički Gemini ključ (`gljivobook_user_gemini_api_key_v1`). |
 | **Grafika & Certifikat** | **HTML5 Canvas 2D API** | Iscrtavanje **Gljivarske iskaznice s QR verifikacijskim pečatom** (`800×500 px PNG`) i **„Outdoor Field Log” kartice ulova** (`1080×1350 px` / `4:5` PNG sa satelitskim mini-radarom i službenim PNG logotipom). |
 
 ---
@@ -27,14 +27,14 @@ Ovaj dokument pruža detaljan uvid u softversku arhitekturu sustava **gljivobook
 
 ```text
 /
-├── server.ts                        # Express SPA poslužitelj + /api/health + /api/analyze-mushroom (isključivo uz korisnikov privremeni ključ)
+├── server.ts                        # Express SPA poslužitelj + /api/health
 ├── vite.config.ts                   # Vite + Tailwind v4 + Workbox PWA runtimeCaching konfiguracija i PNG ikone
 ├── index.html                       # Ulazna HTML točka, OpenGraph oznake i službene PNG PWA ikone
 ├── README.md                        # Pregled projekta, modula i uputa za pokretanje (v3.3 PRO)
 ├── ARCHITECTURE.md                  # Tehnička arhitektura sustava (ovaj dokument)
 ├── CHANGELOG.md                     # Kronološka povijest promjena po verzijama (v1.0 -> v3.3 PRO)
 └── src/
-    ├── App.tsx                      # Glavna aplikacijska ljuska, preklopnik teme (☀️/🌙), Aa pristupačnost, IMI SOS modal i 1-na-1 usporedba
+    ├── App.tsx                      # Glavna aplikacijska ljuska, centralni Back handler, preklopnik teme (☀️/🌙), Aa pristupačnost, IMI SOS modal i 1-na-1 usporedba
     ├── main.tsx                     # React 19 root inicijalizacija i registracija Service Workera
     ├── index.css                    # Globalni tokeni, Tamna šumska tema, Svijetla Paperlike tema (html.light) i Leaflet stilovi
     ├── types/
@@ -44,20 +44,23 @@ Ovaj dokument pruža detaljan uvid u softversku arhitekturu sustava **gljivobook
     │   ├── mushroomsPaketB.ts       # Paket B (99 vrsta: Russula, Lactarius, Cortinarius, Tricholoma, Suillellus luridus + folkNames)
     │   └── quizQuestions.ts         # Baza od 60 pitanja (q01-q60, Rangovi 1-5, Set A & Set B) + 5 poglavlja „Terenske skripte za štrebere”
     ├── services/
+    │   ├── backNavigation.ts        # Čista logika prioriteta povratka (resolveBackNavigationStep, Escape i zaštita od slučajnog izlaza)
+    │   ├── geminiKeyStorage.ts      # Lokalno upravljanje korisničkim Gemini API ključem u pregledniku (load/save s verifikacijom/remove/mask)
     │   ├── offlineDeterminator.ts   # 100% lokalni/offline mikološki determinator + brzi filtar obilježja + Canvas HSV/RGB analiza
     │   ├── quizEngine.ts            # Generator runde (30 pitanja = 5×[3A+3B]), 3 Jokera (50:50, Božac savjet, Preskok) i High-Score Lock
     │   ├── imageService.ts          # Kaskadni dohvat slika (Wikipedia -> iNaturalist -> Wikimedia Commons + skipUrl oporavak)
     │   ├── storageService.ts        # Nativni IndexedDB omotač s automatskom migracijom iz localStoragea
-    │   └── weatherService.ts        # Open-Meteo integracija, astronomski zalazak sunca, sezonski hazardi i Gljivarski indeks (0-100%)
+    │   ├── weatherService.ts        # Open-Meteo integracija, astronomski zalazak sunca, sezonski hazardi i Gljivarski indeks (0-100%)
+    │   └── __tests__/               # Jedinični testovi (geminiKeyStorage.test.ts, backNavigation.test.ts)
     ├── hooks/
     │   ├── usePWAInstall.ts         # Detekcija mrežnog statusa (online/offline) i PWA instalacije
     │   └── useSpeechRecognition.ts  # Hrvatski glasovni unos (Web Speech API hr-HR + mobilni fallback)
     └── components/
-        ├── ZrinaLogo.tsx            # Prikaz službenog neonskog PNG logotipa gljivobook.app by Zrina (/pwa-512x512.png)
+        ├── ZrinaLogo.tsx            # Prikaz službenog neonskog PNG logotipa gljivobook.app by Zrina (/zrina-neon-512.png)
         ├── EncyclopediaView.tsx     # Naslovnica Baze: SEASONAL_WARNINGS matrica, jednoredna statusna traka, filtar po stablima i mreža vrsta
-        ├── MushroomDetailModal.tsx  # Modal detalja vrste: CC-BY-SA atribucija izvora slike, Brzi pregled, Detaljno, Kulinarski modul & 20-min timer
+        ├── MushroomDetailModal.tsx  # Modal detalja vrste: CC-BY-SA atribucija izvora slike, vidljivi gumb Natrag, Brzi pregled, Detaljno, Kulinarski modul & 20-min timer
         ├── MushroomImage.tsx        # Lazy-loaded komponenta za prikaz slika s IntersectionObserverom, skipUrl fallbackom i okvirom za svijetlu temu
-        ├── AIScannerView.tsx        # Dvostruki skener: Lokalni model bez API ključa + Opcionalni Gemini AI uz vlastiti ključ/Google račun i pregled suženih vrsta
+        ├── AIScannerView.tsx        # Dvostruki skener: Lokalni model bez API ključa + Opcionalni Gemini AI uz lokalno spremanje vlastitog ključa na uređaju
         ├── FieldJournalView.tsx     # GPS dnevnik, photoData pohrana, Leaflet karta, Outdoor Field Log Canvas (1080x1350), mini-radar, GPS auto i 3 kg limit
         ├── ForestPermitSection.tsx  # Dinamička šumska dozvola (Hrvatske šume) s validacijom godine i fullscreen prikazom za lugara
         ├── QuizView.tsx             # Mikološki kviz (30 pitanja kroz 5 rangova, 3 jokera, Mala škola mikologije, High-Score Lock i QR iskaznica)
@@ -66,15 +69,26 @@ Ovaj dokument pruža detaljan uvid u softversku arhitekturu sustava **gljivobook
 
 ---
 
-## 3. Dvostruki Terenski Determinator: Lokalni Offline Model & Opcionalni Google Gemini AI Skener (`offlineDeterminator.ts`, `AIScannerView.tsx` & `server.ts`)
+## 3. Dvostruki Terenski Determinator i Lokalna Pohrana Korisničkog Ključa (`offlineDeterminator.ts`, `geminiKeyStorage.ts`, `AIScannerView.tsx`)
 
-Kako u aplikaciji nikada ne bi bio trajno pohranjen niti trošen autorski `GEMINI_API_KEY`, determinator podržava dva neovisna načina rada:
+Kako u aplikaciji nikada ne bi bio ugrađen niti trošen autorski ili zajednički `GEMINI_API_KEY`, determinator podržava dva neovisna načina rada:
 1. **Korak prije kamere — Brzi morfološki filtar (`VisibleTraitsFilter`) i pregled suženih vrsta:**
    - Funkcija `evaluateVisibleTraitsMatch(mushroom, visibleTraits)` u stvarnom vremenu filtrira svih 169 vrsta prema 4 ključna terenska pitanja (*Ispod klobuka*, *Raste na*, *Dno stručka*, *Meso na prerezu*) uz gumb **`👁️ Pregledaj sužene vrste`** za trenutačni uvid u kompatibilne vrste i prije fotografiranja.
-2. **Način A — Lokalni Mikološki Model (`runLocalMycologicalDetermination` — bez API ključa):**
+2. **Način A — Lokalni Mikološki Model (`runLocalMycologicalDetermination` — zadano, bez API ključa):**
    - Središnji dio učitanih fotografija (klobuk, odozdo, prerez) analizira se lokalno na `offscreen` HTML5 Canvasu (`96×96 px`, HSV/RGB distribucija tonova) te se kombinira s morfološkim filtrom, bilješkama i sezonalnošću (uz sigurnosni strop pouzdanosti od **90%**).
-3. **Način B — Opcionalni Google Gemini AI Dubinski Skener (`/api/analyze-mushroom`):**
-   - Poslužitelj (`server.ts`) nikada ne čita `process.env.GEMINI_API_KEY`. Poziv modelu `gemini-3-flash-preview` izvršava se isključivo ako korisnik poveže svoj Google račun putem AI Studija (`window.aistudio.openSelectKey()`) ili privremeno unese vlastiti Gemini API ključ u radnu memoriju trenutne sesije (uz ugrađeni **`ℹ️ Kako do besplatnog Gemini API ključa?`** vodič).
+3. **Način B — Opcionalni Google Gemini AI Dubinski Skener (`gemini-3-flash-preview` izravno iz preglednika):**
+   - Korisnik može izričito spremiti vlastiti Gemini API ključ na svom uređaju putem `saveUserGeminiApiKey` (`localStorage` ključ `gljivobook_user_gemini_api_key_v1`). Pri spremanju izvršava se trenutna provjera ponovnog čitanja (`getItem`), pa ako je `localStorage` blokiran ili nedostupan, korisnik dobiva jasnu poruku i status nikada lažno ne prikazuje „Spremljeno”. Ključ se prikazuje maskirano (`maskGeminiApiKey`) uz gumb za trenutno brisanje (`removeUserGeminiApiKey`), ostaje isključivo u pregledniku tog uređaja i nikada se ne šalje na poslužitelj aplikacije, u Firebase niti u `IndexedDB`.
+
+---
+
+## 3.1. Objedinjena Back Navigacija i Zaštita od Slučajnog Izlaza (`backNavigation.ts` & `App.tsx`)
+
+Centralni modul `resolveBackNavigationStep(ctx)` upravlja mobilnim/browser `popstate` događajem, vidljivim gumbima *Natrag*, rubnom swipe gestom s lijevog ruba ekrana (na ne-iOS uređajima, uz izuzeće polja za unos, `.leaflet-container` karte i horizontalnih galerija) te `Escape` tipkom za modale prema strogom prioritetu:
+1. **Zaštita obaveznog sigurnosnog disclaimera (`ignore-disclaimer`):** Dok korisnik ne potvrdi upozorenje pri prvom ulazu, Back ga ne može zaobići.
+2. **Zatvaranje najvišeg otvorenog modala/overlaya:** `Lightbox` -> `1-na-1 usporedba` -> `Info o dvojnicama` -> `SOS protokol` -> `O aplikaciji` -> `Predloži vrstu` -> `iOS instalacija`.
+3. **Detalj vrste (`MushroomDetailModal`):** Ako `modalHistory` ima prethodnu vrstu (`detail-step-back`), vraća se na nju; inače zatvara detalj (`close-detail`) i vraća prethodni tab, filtre/pretragu i poziciju skrolanja (`detailReturnScrollYRef`).
+4. **Povratak s podstranice (`return-to-encyclopedia`):** Iz *Vizualnog ključa*, *Skenera*, *Dnevnika* ili *Kviza* vraća korisnika na *Enciklopediju* uz obnovu prethodne pozicije skrolanja (`encyclopediaScrollYRef`).
+5. **Povratak na vrh (`scroll-to-top`) i dvostruki Back za izlaz (`exit-prompt` -> `allow-exit`):** Ako je korisnik na Enciklopediji skrolao niže od `120 px`, prvi Back ga vraća na vrh. Na samom vrhu početnog prikaza prvi Back prikazuje poruku *„Pritisnite još jednom za izlaz”*, a drugi Back unutar `3000 ms` prepušta prirodan izlaz pregledniku/OS-u bez `window.close()` i bez beskonačnog niza `history.pushState` poziva.
 
 ---
 

@@ -16,7 +16,8 @@
 
 Spaja klasičnu mikološku taksonomiju i morfološke opise prema standardu prof. dr. sc. Romana Bošca s modernim terenskim alatima:
 - **Dvostruki sustav tema (`☀️ / 🌙`):** Tamna šumska tema i svijetla **„Paperlike / Terenski dnevnik”** tema za čitanje na jakom suncu bez odbljeska, uz gumb **`Aa`** (*100% -> 120% -> Visoki kontrast*).
-- **Dvostruki Terenski Determinator (`offlineDeterminator.ts` + Opcionalni Google Gemini AI Skener):** Zadani **Lokalni Mikološki Model (Božac Offline Engine)** radi 100% besplatno i izvan mreže bez API ključa uz **Brzi morfološki filtar prije kamere („Obilježja koja vidiš”)** s trenutačnim pregledom suženih vrsta (`👁️ Pregledaj sužene vrste`), dok napredni **Google Gemini AI Dubinski Skener** omogućuje opcionalno povezivanje vlastitog Google računa (AI Studio) ili privremeni unos vlastitog Gemini API ključa samo za tekuću sesiju (bez trajnog spremanja autorskog ključa u aplikaciji) uz ugrađeni **`ℹ️ Kako do besplatnog Gemini API ključa?`** vodič.
+- **Dvostruki Terenski Determinator (`offlineDeterminator.ts` + Opcionalni Google Gemini AI Skener):** Zadani **Lokalni Mikološki Model (Božac Offline Engine)** radi 100% besplatno i izvan mreže bez API ključa uz **Brzi morfološki filtar prije kamere („Obilježja koja vidiš”)** s trenutačnim pregledom suženih vrsta (`👁️ Pregledaj sužene vrste`), dok napredni **Google Gemini AI Dubinski Skener** omogućuje opcionalno povezivanje vlastitog Google računa (AI Studio) ili izričito spremanje vlastitog Gemini API ključa lokalno na uređaju (`Spremi na ovom uređaju` / `gljivobook_user_gemini_api_key_v1`, bez autorskog ključa u aplikaciji i bez sinkronizacije u oblak) uz ugrađeni **`ℹ️ Kako do besplatnog Gemini API ključa?`** vodič.
+- **Objedinjena terenska Back navigacija i geste (`backNavigation.ts`):** Centralni handler za mobilni/browser Back (`popstate`), vidljive gumbe *Natrag*, rubnu swipe gestu s lijevog ruba (izvan iOS-a) i `Escape` tipku koji zatvara otvorene modale, vraća prethodnu vrstu u `modalHistory` ili obnavlja poziciju skrolanja i filtre, vraća korisnika s podstranica na Enciklopediju te sprječava slučajni izlazak iz aplikacije na terenu dvostrukom potvrdom (*„Pritisnite još jednom za izlaz”* unutar 3 sekunde).
 - **169 autohtonih vrsta Hrvatske s hrvatskim narodnim imenima (`folkNames`), pametnim razvrstavanjem (`⭐ Favoriti` vs `A–Z`), cjelogodišnjom matricom „Upozorenje tjedna” i mikoriznim filtrom po stablima (`🌲 Ispod stabla`).**
 - **Službeni SOS protokol Centra za kontrolu otrovanja pri Institutu za medicinska istraživanja i medicinu rada (IMI) (`+385 1 2348 342` / `112`)** s razlikovanjem sindroma kratke (< 6 h) i duge latencije (6–24 h+).
 - **Satelitski i topografski GPS dnevnik nalazišta (`Leaflet`), „Outdoor Field Log” generator kartice ulova (`1080×1350 px`), GPS lokator parkiranog automobila (`🚗 Gdje mi je auto?`), praćenje dnevnog limita berbe (3 kg), dinamička evidencija dozvole Hrvatskih šuma te mikološki kviz sustav (baza 60 pitanja Set A & B, runda od 30 pitanja kroz 5 rangova, 3 terenska jokera, High-Score Lock, „Mala škola mikologije” i Gljivarska iskaznica s QR verifikacijskim pečatom).**
@@ -40,7 +41,7 @@ Spaja klasičnu mikološku taksonomiju i morfološke opise prema standardu prof.
 - **Preklopnik teme (`☀️ / 🌙` u zaglavlju):** Omogućuje trenutno prebacivanje između zadane **Tamne šumske teme** (`#0b110e`) i **Svijetle „Paperlike / Terenski dnevnik” teme** (`#f6f4ee` topla papirnata podloga, `#ffffff` kartice, `#151a16` ugljeno-crni tekst) optimizirane za vanjsku upotrebu na suncu bez odbljeska.
 - **Višestupanjska pristupačnost (`Aa`):** Tri razine čitljivosti (*Normalno 100% -> Krupno 120% -> Visoki kontrast za jako sunce*).
 
-### 3. 📸 Dvostruki Terenski Determinator: Lokalni Offline Model + Opcionalni Google Gemini AI Skener (`AIScannerView.tsx`, `offlineDeterminator.ts`, `server.ts`)
+### 3. 📸 Dvostruki Terenski Determinator: Lokalni Offline Model + Opcionalni Google Gemini AI Skener (`AIScannerView.tsx`, `offlineDeterminator.ts`, `geminiKeyStorage.ts`)
 - **Brzi morfološki filtar prije kamere — „Obilježja koja vidiš” + Pregled suženih vrsta (`👁️ Pregledaj sužene vrste`):**
   1. **Ispod klobuka:** `Listići` / `Cjevčice (spužva)` / `Bodljice` / `Trubasto`
   2. **Raste na:** `Tlu` / `Panju ili deblu`
@@ -48,8 +49,8 @@ Spaja klasičnu mikološku taksonomiju i morfološke opise prema standardu prof.
   4. **Meso na prerezu:** `Mijenja boju (plavi, crveni)` / `Ne mijenja` / `Pušta mlijeko`
 - **Način A — 🌲 Lokalni Mikološki Model (Zadano • BEZ API KLJUČA):**
   - Radi 100% besplatno i izvan mreže kombinirajući odabrana obilježja, spektralnu analizu boja s fotografija (*1. Klobuk*, *2. Odozdo*, *3. Prerez i baza*) i terenske bilješke sa svih 169 vrsta u bazi uz maksimalnu pouzdanost ograničenu na **90%**.
-- **Način B — ✨ Google Gemini AI Dubinski Skener (Opcionalno • VLASTITI KLJUČ / GOOGLE RAČUN):**
-  - U aplikaciji **nije trajno spremljen nikakav autorski API ključ**. Posjetitelj može povezati vlastiti Google račun putem AI Studija (`🔗 Poveži Google račun`) ili privremeno unijeti vlastiti besplatni Gemini API ključ isključivo za tekuću sesiju (uz ugrađeni **`ℹ️ Kako do besplatnog Gemini API ključa?`** vodič u 4 koraka).
+- **Način B — ✨ Google Gemini AI Dubinski Skener (Opcionalno • VLASTITI KLJUČ NA UREĐAJU / GOOGLE RAČUN):**
+  - U aplikaciji **nije ugrađen nikakav autorski niti zajednički API ključ**. Korisnik može povezati vlastiti Google račun putem AI Studija (`🔗 Poveži Google račun`) ili unijeti vlastiti Gemini API ključ uz izričitu opciju **`💾 Spremi na ovom uređaju`** (`localStorage` ključ `gljivobook_user_gemini_api_key_v1` s verifikacijom čitanja nakon zapisa, maskiranim prikazom `AIza••••...` i gumbom **`🗑️ Ukloni ključ`**). Ključ je pohranjen isključivo u pregledniku tog uređaja, nije šifriran i ne sinkronizira se u oblak.
 
 ### 4. 🍽️ Kulinarski Modul i Toksikološke Upute (`MushroomDetailModal.tsx`)
 - **Provjereni recepti prilagođeni rodu gljive:** Za svaku jestivu (`SAFE`) i uvjetno jestivu (`WARN`) vrstu generiraju se 3 ciljana kulinarska recepta i upute za konzerviranje.
@@ -92,8 +93,9 @@ npm ci
 # 2. Pokretanje razvojnog poslužitelja (Express + Vite na portu 3000)
 npm run dev
 
-# 3. TypeScript provjera
+# 3. TypeScript provjera i jedinični testovi
 npm run lint
+npm test
 
 # 4. Produkcijski build
 npm run build

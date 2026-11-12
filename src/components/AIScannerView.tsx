@@ -31,6 +31,12 @@ import {
   UploadedPhotoSlot,
   VisibleTraitsFilter,
 } from '../services/offlineDeterminator';
+import {
+  loadUserGeminiApiKey,
+  maskGeminiApiKey,
+  removeUserGeminiApiKey,
+  saveUserGeminiApiKey,
+} from '../services/geminiKeyStorage';
 import { MushroomImage } from './MushroomImage';
 
 interface AIScannerViewProps {
@@ -217,9 +223,14 @@ function renderSlotAngleSvg(slotIndex: number) {
 }
 
 export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelectMushroom }) => {
-  // Engine mode: 'local' (default, 100% free & offline, no API key needed) or 'gemini' (optional user-supplied temporary key)
+  // Engine mode: 'local' (default, 100% free & offline, no API key needed) or 'gemini' (optional user-supplied key)
   const [engineMode, setEngineMode] = useState<ScannerEngineMode>('local');
   const [sessionApiKey, setSessionApiKey] = useState<string>('');
+  const [savedDeviceKey, setSavedDeviceKey] = useState<string>('');
+  const [keyStatusMessage, setKeyStatusMessage] = useState<{
+    type: 'saved' | 'error' | 'info';
+    text: string;
+  } | null>(null);
   const [showApiKeyInfoModal, setShowApiKeyInfoModal] = useState<boolean>(false);
   const [showPreFilteredPreview, setShowPreFilteredPreview] = useState<boolean>(false);
 
@@ -239,14 +250,46 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
   const [result, setResult] = useState<DeterminationResult | null>(null);
   const [usedEngineLabel, setUsedEngineLabel] = useState<string>('');
 
-  // Ensure any old permanently stored keys from earlier prototypes are purged
+  // Load user's saved Gemini API key from localStorage on startup (default engine remains 'local')
   useEffect(() => {
-    try {
-      localStorage.removeItem('gljivobook_gemini_api_key');
-    } catch {
-      // Ignore
+    const loaded = loadUserGeminiApiKey();
+    if (loaded.key) {
+      setSessionApiKey(loaded.key);
+      setSavedDeviceKey(loaded.key);
     }
   }, []);
+
+  const isCurrentKeySavedOnDevice =
+    Boolean(savedDeviceKey) && sessionApiKey.trim() === savedDeviceKey;
+
+  const handleSaveKeyOnDevice = () => {
+    setError(null);
+    const saveResult = saveUserGeminiApiKey(sessionApiKey);
+    if (saveResult.saved) {
+      setSessionApiKey(saveResult.key);
+      setSavedDeviceKey(saveResult.key);
+      setKeyStatusMessage({
+        type: 'saved',
+        text: saveResult.message,
+      });
+    } else {
+      setKeyStatusMessage({
+        type: 'error',
+        text: saveResult.message,
+      });
+    }
+  };
+
+  const handleRemoveKeyFromDevice = () => {
+    setError(null);
+    const removeResult = removeUserGeminiApiKey();
+    setSessionApiKey('');
+    setSavedDeviceKey('');
+    setKeyStatusMessage({
+      type: removeResult.removed ? 'info' : 'error',
+      text: removeResult.message,
+    });
+  };
 
   const hasActiveTraitFilters =
     visibleTraits.underCap !== 'ALL' ||
@@ -332,11 +375,11 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
       return;
     }
 
-    // If user selected Google Gemini AI mode, verify they provided a temporary session key
+    // If user selected Google Gemini AI mode, verify they provided their own API key
     const trimmedUserKey = sessionApiKey.trim();
     if (engineMode === 'gemini' && !trimmedUserKey) {
       setError(
-        'U aplikaciji nije trajno spremljen API ključ autora. Za Google Gemini AI dubinski skener privremeno unesite vlastiti Gemini API ključ u polje iznad (kliknite na ℹ️ Info gumb za upute kako ga besplatno preuzeti putem svog Google računa) ili koristite „🌲 Lokalni Mikološki Model (Bez API ključa)” koji radi odmah!'
+        'U aplikaciji nije ugrađen zajednički API ključ autora. Za Google Gemini AI dubinski skener unesite vlastiti Gemini API ključ u polje iznad (po želji ga spremite na ovom uređaju) ili koristite „🌲 Lokalni Mikološki Model (Bez API ključa)” koji radi odmah!'
       );
       return;
     }
@@ -444,7 +487,7 @@ Pouzdanost (confidence) nikada ne smije prelaziti 90% iz sigurnosnih razloga.`;
         }
 
         setResult(parsed as DeterminationResult);
-        setUsedEngineLabel('Google Gemini AI Dubinski Skener (Vlastiti ključ sesije)');
+        setUsedEngineLabel('Google Gemini AI Dubinski Skener (Vlastiti korisnički ključ)');
       } else {
         const analysis = await runLocalMycologicalDetermination({
           photos,
@@ -563,9 +606,14 @@ Pouzdanost (confidence) nikada ne smije prelaziti 90% iz sigurnosnih razloga.`;
                   <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-[10px] font-bold text-amber-300">
                     VLASTITI KLJUČ
                   </span>
+                  {savedDeviceKey && (
+                    <span className="px-2 py-0.5 rounded bg-emerald-600/25 border border-emerald-500/40 text-[10px] font-bold text-emerald-300">
+                      ✓ Ključ spremljen
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-[#9bb0a2] mt-1 leading-relaxed">
-                  Dubinska AI vizualna analiza pomoću vašeg Google računa / vlastitog Gemini API ključa (bez trajnog spremanja ključa u aplikaciju).
+                  Dubinska AI vizualna analiza pomoću vašeg osobnog Gemini API ključa (možete ga spremiti u pregledniku ovog uređaja).
                 </p>
               </div>
             </button>
@@ -579,10 +627,10 @@ Pouzdanost (confidence) nikada ne smije prelaziti 90% iz sigurnosnih razloga.`;
                   <KeyRound className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div>
                     <div className="text-xs sm:text-sm font-bold text-[#f2f6f3]">
-                      Povezivanje s vašim Google Gemini API ključem (Samo za trenutnu sesiju)
+                      Vaš osobni Google Gemini API ključ
                     </div>
                     <p className="text-[11px] text-[#9bb0a2]">
-                      U aplikaciji nije ugrađen trajni API ključ autora. AI dubinski skener radi samo kada povežete svoj Google račun ili privremeno zalijepite vlastiti besplatni Gemini API ključ.
+                      Ključ je spremljen samo u pregledniku ovog uređaja (<code className="text-amber-300">localStorage</code>) kada kliknete <strong>„Spremi na ovom uređaju”</strong>. Nije šifriran i ne sinkronizira se u oblak.
                     </p>
                   </div>
                 </div>
@@ -633,47 +681,112 @@ Pouzdanost (confidence) nikada ne smije prelaziti 90% iz sigurnosnih razloga.`;
                       Kopirajte generirani niz znakova (počinje s <code className="px-1.5 py-0.5 rounded bg-[#0b130e] text-amber-300">AIza...</code>) i zalijepite ga u polje ispod.
                     </li>
                     <li>
-                      <strong>100% privatno i bez trajnog spremanja:</strong> Ključ se drži isključivo u radnoj memoriji dok vam je stranica otvorena i automatski se briše zatvaranjem kartice.
+                      Kliknite <strong>„Spremi na ovom uređaju”</strong> ako želite da vas ključ dočeka pri idućem otvaranju stranice. Ključ je spremljen isključivo u pregledniku ovog uređaja, nije šifriran i ne sinkronizira se u oblak.
                     </li>
                   </ol>
                 </div>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
-                <div className="md:col-span-8 flex items-center gap-2">
+                <div className="md:col-span-6 flex items-center gap-2">
                   <input
                     type="password"
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-label="Osobni Google Gemini API ključ"
                     value={sessionApiKey}
-                    onChange={(e) => setSessionApiKey(e.target.value)}
-                    placeholder="Privremeno zalijepite svoj Gemini API ključ (AIza...)"
+                    onChange={(e) => {
+                      setSessionApiKey(e.target.value);
+                      if (keyStatusMessage) {
+                        setKeyStatusMessage(null);
+                      }
+                    }}
+                    placeholder="Unesite svoj Gemini API ključ (AIza...)"
                     className="w-full min-h-[42px] px-3.5 py-2 rounded-xl bg-[#121e16] border border-[#2a4233] text-xs sm:text-sm text-[#f2f6f3] placeholder-[#6e8476] focus:outline-none focus:border-amber-500"
                   />
-                  {sessionApiKey && (
-                    <button
-                      type="button"
-                      onClick={() => setSessionApiKey('')}
-                      className="min-h-[42px] px-3 py-2 rounded-xl bg-red-950/50 hover:bg-red-900/60 border border-red-800/50 text-xs font-semibold text-red-200 shrink-0 cursor-pointer"
-                      title="Odmah ukloni ključ iz radne memorije"
-                    >
-                      Obriši
-                    </button>
-                  )}
                 </div>
 
-                <div className="md:col-span-4 flex flex-wrap items-center gap-2">
+                <div className="md:col-span-6 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveKeyOnDevice}
+                    disabled={!sessionApiKey.trim()}
+                    className="flex-1 min-h-[42px] px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-xs font-semibold text-white inline-flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Spremi na ovom uređaju</span>
+                  </button>
+
+                  {(sessionApiKey || savedDeviceKey) && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveKeyFromDevice}
+                      className="min-h-[42px] px-3 py-2 rounded-xl bg-red-950/50 hover:bg-red-900/60 border border-red-800/50 text-xs font-semibold text-red-200 inline-flex items-center justify-center gap-1.5 shrink-0 cursor-pointer transition-colors"
+                      title="Ukloni spremljeni ključ s ovog uređaja"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Ukloni ključ</span>
+                    </button>
+                  )}
+
                   <a
                     href="https://aistudio.google.com/apikey"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full min-h-[42px] px-3.5 py-2 rounded-xl bg-[#18291f] hover:bg-[#223a2c] border border-emerald-500/40 text-xs font-semibold text-emerald-300 inline-flex items-center justify-center gap-1.5 transition-colors"
+                    className="min-h-[42px] px-3 py-2 rounded-xl bg-[#18291f] hover:bg-[#223a2c] border border-emerald-500/40 text-xs font-semibold text-emerald-300 inline-flex items-center justify-center gap-1.5 transition-colors shrink-0"
                     title="Prijavite se Google računom i preuzmite svoj besplatni Gemini API ključ"
                   >
                     <KeyRound className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>Preuzmi ključ (Google račun)</span>
+                    <span>Preuzmi ključ</span>
                     <ExternalLink className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   </a>
                 </div>
               </div>
+
+              {/* Saved Key Confirmation Badge / Storage Status Feedback */}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                {isCurrentKeySavedOnDevice ? (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>
+                      Spremljeno na ovom uređaju:{' '}
+                      <code className="font-mono-tabular text-emerald-200">
+                        {maskGeminiApiKey(savedDeviceKey)}
+                      </code>
+                    </span>
+                  </div>
+                ) : sessionApiKey.trim() ? (
+                  <span className="text-[#9bb0a2]">
+                    Ključ je unesen u polje ({maskGeminiApiKey(sessionApiKey)}), ali još nije spremljen na uređaj — kliknite <strong>„Spremi na ovom uređaju”</strong> za trajno čuvanje u pregledniku.
+                  </span>
+                ) : (
+                  <span className="text-[#889e90]">
+                    Nema spremljenog ključa na ovom uređaju.
+                  </span>
+                )}
+              </div>
+
+              {keyStatusMessage && (
+                <div
+                  role="status"
+                  className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+                    keyStatusMessage.type === 'saved'
+                      ? 'bg-emerald-950/50 border-emerald-500/50 text-emerald-200'
+                      : keyStatusMessage.type === 'error'
+                      ? 'bg-red-950/50 border-red-800/60 text-red-200'
+                      : 'bg-[#121e16] border-[#283e30] text-[#d6e3da]'
+                  }`}
+                >
+                  {keyStatusMessage.type === 'saved' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  ) : keyStatusMessage.type === 'error' ? (
+                    <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                  ) : (
+                    <Info className="w-4 h-4 text-amber-400 shrink-0" />
+                  )}
+                  <span>{keyStatusMessage.text}</span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1081,7 +1194,11 @@ Pouzdanost (confidence) nikada ne smije prelaziti 90% iz sigurnosnih razloga.`;
           <p className="text-xs text-[#889e90]">
             {engineMode === 'local'
               ? `Aktivan način: 🌲 Lokalni Mikološki Model (bez API ključa, uspoređuje ${preFilteredSpecies.length} kandidata).`
-              : `Aktivan način: ✨ Google Gemini AI Dubinski Skener (koristi isključivo vaš privremeni ključ sesije).`}
+              : `Aktivan način: ✨ Google Gemini AI Dubinski Skener (${
+                  isCurrentKeySavedOnDevice
+                    ? 'koristi vaš ključ spremljen na ovom uređaju'
+                    : 'koristi vaš uneseni korisnički ključ'
+                }).`}
           </p>
           <button
             type="button"

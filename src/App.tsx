@@ -79,6 +79,14 @@ import {
   MushroomForecastResult,
   REGION_COORDINATES,
 } from './services/weatherService';
+import {
+  DEFAULT_EXIT_PROMPT_WINDOW_MS,
+  DEFAULT_SCROLL_TOP_THRESHOLD,
+  isEditableDomTarget,
+  isSwipeIgnoredDomTarget,
+  resolveBackNavigationStep,
+  resolveEscapeModalStep,
+} from './services/backNavigation';
 
 type ActiveTab = 'enciklopedija' | 'kljuc' | 'skener' | 'dnevnik' | 'kviz';
 export type AccessibilityMode = 'normal' | 'large' | 'high-contrast';
@@ -393,13 +401,83 @@ export default function App() {
   const modalScrollRef = useRef<HTMLDivElement | null>(null);
   const [focusLookalikesHighlight, setFocusLookalikesHighlight] = useState(false);
 
+  // Navigation & Scroll Restoration State/Refs
+  const detailReturnScrollYRef = useRef<number>(0);
+  const detailReturnTabRef = useRef<ActiveTab>('enciklopedija');
+  const encyclopediaScrollYRef = useRef<number>(0);
+  const hasUserInteractedRef = useRef<boolean>(false);
+  const hasHistoryGuardRef = useRef<boolean>(false);
+  const lastBackHandledAtRef = useRef<number>(0);
+  const lastExitPromptAtRef = useRef<number | null>(null);
+  const exitToastTimerRef = useRef<number | null>(null);
+  const [showExitToast, setShowExitToast] = useState<boolean>(false);
+
+  const clearExitPromptState = () => {
+    lastExitPromptAtRef.current = null;
+    setShowExitToast(false);
+    if (exitToastTimerRef.current !== null) {
+      window.clearTimeout(exitToastTimerRef.current);
+      exitToastTimerRef.current = null;
+    }
+  };
+
+  /**
+   * Ensures at most ONE history guard entry exists on the browser history stack,
+   * and only pushes after real user interaction (never creating an infinite pushState chain).
+   */
+  const ensureHistoryGuard = () => {
+    if (typeof window === 'undefined' || !hasUserInteractedRef.current) return;
+    try {
+      const currentState = window.history.state;
+      if (currentState && currentState.gljivobookBackGuard === true) {
+        hasHistoryGuardRef.current = true;
+        return;
+      }
+      if (!hasHistoryGuardRef.current) {
+        window.history.pushState({ gljivobookBackGuard: true }, '', window.location.href);
+        hasHistoryGuardRef.current = true;
+      }
+    } catch {
+      // Ignore history API restrictions
+    }
+  };
+
+  const switchMainTab = (nextTab: ActiveTab) => {
+    hasUserInteractedRef.current = true;
+    clearExitPromptState();
+    if (activeTab === 'enciklopedija' && nextTab !== 'enciklopedija') {
+      encyclopediaScrollYRef.current = typeof window !== 'undefined' ? window.scrollY : 0;
+    }
+    setActiveTab(nextTab);
+    ensureHistoryGuard();
+    if (nextTab === 'enciklopedija') {
+      const targetY = encyclopediaScrollYRef.current;
+      setTimeout(() => {
+        window.scrollTo({ top: targetY, behavior: 'auto' });
+      }, 20);
+    } else {
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }, 20);
+    }
+  };
+
   const openMushroomModal = (mushroomId: string) => {
+    hasUserInteractedRef.current = true;
+    clearExitPromptState();
+    if (selectedMushroomId === null && typeof window !== 'undefined') {
+      detailReturnScrollYRef.current = window.scrollY;
+      detailReturnTabRef.current = activeTab;
+    }
     setFocusLookalikesHighlight(false);
     setModalHistory([mushroomId]);
     setSelectedMushroomId(mushroomId);
+    ensureHistoryGuard();
   };
 
   const navigateToLookalikeInModal = (targetId: string) => {
+    hasUserInteractedRef.current = true;
+    clearExitPromptState();
     setFocusLookalikesHighlight(false);
     setModalHistory((prev) => {
       const base = prev.length > 0 ? prev : selectedMushroomId ? [selectedMushroomId] : [];
@@ -407,34 +485,53 @@ export default function App() {
       return [...base, targetId];
     });
     setSelectedMushroomId(targetId);
-    setTimeout(() => {
-      modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 40);
-  };
-
-  const handleModalBack = () => {
-    if (modalHistory.length <= 1) return;
-    const nextHistory = modalHistory.slice(0, -1);
-    const previousId = nextHistory[nextHistory.length - 1];
-    setModalHistory(nextHistory);
-    setSelectedMushroomId(previousId);
-    setFocusLookalikesHighlight(false);
+    ensureHistoryGuard();
     setTimeout(() => {
       modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     }, 40);
   };
 
   const closeMushroomModal = () => {
+    const returnScrollY = detailReturnScrollYRef.current;
+    const returnTab = detailReturnTabRef.current;
     setSelectedMushroomId(null);
     setModalHistory([]);
     setFocusLookalikesHighlight(false);
+    if (activeTab !== returnTab) {
+      setActiveTab(returnTab);
+    }
+    setTimeout(() => {
+      window.scrollTo({ top: returnScrollY, behavior: 'auto' });
+    }, 25);
+  };
+
+  const handleModalBack = () => {
+    if (modalHistory.length > 1) {
+      const nextHistory = modalHistory.slice(0, -1);
+      const previousId = nextHistory[nextHistory.length - 1];
+      setModalHistory(nextHistory);
+      setSelectedMushroomId(previousId);
+      setFocusLookalikesHighlight(false);
+      setTimeout(() => {
+        modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 40);
+      return;
+    }
+    closeMushroomModal();
   };
 
   const openAndFocusLookalikes = (mushroomId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    hasUserInteractedRef.current = true;
+    clearExitPromptState();
+    if (selectedMushroomId === null && typeof window !== 'undefined') {
+      detailReturnScrollYRef.current = window.scrollY;
+      detailReturnTabRef.current = activeTab;
+    }
     setModalHistory([mushroomId]);
     setSelectedMushroomId(mushroomId);
     setFocusLookalikesHighlight(true);
+    ensureHistoryGuard();
     setTimeout(() => {
       lookalikeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 140);
@@ -675,6 +772,280 @@ export default function App() {
       cancelled = true;
     };
   }, [selectedMushroom]);
+
+  // Central Back Handler used by popstate, visible Back buttons, and left-edge swipe
+  const handleCentralBackRef = useRef<
+    (source: 'popstate' | 'ui' | 'swipe') => void
+  >(() => {});
+
+  handleCentralBackRef.current = (source: 'popstate' | 'ui' | 'swipe') => {
+    const now = Date.now();
+    // Prevent duplicate execution when native popstate and edge-swipe overlap
+    if (now - lastBackHandledAtRef.current < 220) {
+      return;
+    }
+    lastBackHandledAtRef.current = now;
+    hasUserInteractedRef.current = true;
+
+    if (source === 'popstate') {
+      hasHistoryGuardRef.current = false;
+    }
+
+    const step = resolveBackNavigationStep({
+      showDisclaimerModal,
+      hasLightboxOpen: Boolean(
+        selectedMushroom && lightboxIndex !== null && galleryPhotos[lightboxIndex]
+      ),
+      hasCompareModalOpen: compareModalData !== null,
+      hasLookalikeInfoModalOpen: lookalikeInfoModal !== null,
+      showSOSModal,
+      showAboutModal,
+      showAddSpeciesModal,
+      showIOSInstallModal,
+      selectedMushroomId,
+      modalHistory,
+      activeTab,
+      scrollY: typeof window !== 'undefined' ? window.scrollY : 0,
+      scrollThreshold: DEFAULT_SCROLL_TOP_THRESHOLD,
+      lastExitPromptAt: lastExitPromptAtRef.current,
+      now,
+      exitPromptWindowMs: DEFAULT_EXIT_PROMPT_WINDOW_MS,
+    });
+
+    switch (step.action) {
+      case 'blocked-by-disclaimer':
+        ensureHistoryGuard();
+        return;
+
+      case 'close-lightbox':
+        clearExitPromptState();
+        setLightboxIndex(null);
+        ensureHistoryGuard();
+        return;
+
+      case 'close-compare-modal':
+        clearExitPromptState();
+        setCompareModalData(null);
+        ensureHistoryGuard();
+        return;
+
+      case 'close-lookalike-info-modal':
+        clearExitPromptState();
+        setLookalikeInfoModal(null);
+        ensureHistoryGuard();
+        return;
+
+      case 'close-sos-modal':
+        clearExitPromptState();
+        setShowSOSModal(false);
+        ensureHistoryGuard();
+        return;
+
+      case 'close-about-modal':
+        clearExitPromptState();
+        setShowAboutModal(false);
+        ensureHistoryGuard();
+        return;
+
+      case 'close-add-species-modal':
+        clearExitPromptState();
+        setShowAddSpeciesModal(false);
+        ensureHistoryGuard();
+        return;
+
+      case 'close-ios-install-modal':
+        clearExitPromptState();
+        setShowIOSInstallModal(false);
+        ensureHistoryGuard();
+        return;
+
+      case 'detail-history-back':
+        clearExitPromptState();
+        setModalHistory(step.nextHistory);
+        setSelectedMushroomId(step.previousMushroomId);
+        setFocusLookalikesHighlight(false);
+        ensureHistoryGuard();
+        setTimeout(() => {
+          modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 40);
+        return;
+
+      case 'close-detail':
+        clearExitPromptState();
+        closeMushroomModal();
+        ensureHistoryGuard();
+        return;
+
+      case 'return-to-encyclopedia': {
+        clearExitPromptState();
+        const savedEncScrollY = encyclopediaScrollYRef.current;
+        setActiveTab('enciklopedija');
+        ensureHistoryGuard();
+        setTimeout(() => {
+          window.scrollTo({ top: savedEncScrollY, behavior: 'auto' });
+        }, 25);
+        return;
+      }
+
+      case 'scroll-to-top':
+        clearExitPromptState();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        ensureHistoryGuard();
+        return;
+
+      case 'exit-prompt':
+        lastExitPromptAtRef.current = now;
+        setShowExitToast(true);
+        if (exitToastTimerRef.current !== null) {
+          window.clearTimeout(exitToastTimerRef.current);
+        }
+        exitToastTimerRef.current = window.setTimeout(() => {
+          setShowExitToast(false);
+          lastExitPromptAtRef.current = null;
+          exitToastTimerRef.current = null;
+        }, DEFAULT_EXIT_PROMPT_WINDOW_MS);
+        ensureHistoryGuard();
+        return;
+
+      case 'allow-exit':
+        clearExitPromptState();
+        // Do NOT push another history guard and do NOT call window.close();
+        // let the browser/OS handle the exit naturally when supported.
+        if (source !== 'popstate' && typeof window !== 'undefined' && window.history.length > 1) {
+          try {
+            window.history.back();
+          } catch {
+            // Ignore
+          }
+        }
+        return;
+    }
+  };
+
+  // Global listeners: user interaction guard arming, popstate, Escape modal closing, and non-iOS left-edge swipe
+  useEffect(() => {
+    const onFirstUserInteraction = () => {
+      if (!hasUserInteractedRef.current) {
+        hasUserInteractedRef.current = true;
+        ensureHistoryGuard();
+      }
+    };
+
+    const onPopState = () => {
+      handleCentralBackRef.current('popstate');
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      onFirstUserInteraction();
+      if (e.key !== 'Escape') return;
+      const escapeStep = resolveEscapeModalStep(
+        {
+          showDisclaimerModal,
+          hasLightboxOpen: Boolean(
+            selectedMushroom && lightboxIndex !== null && galleryPhotos[lightboxIndex]
+          ),
+          hasCompareModalOpen: compareModalData !== null,
+          hasLookalikeInfoModalOpen: lookalikeInfoModal !== null,
+          showSOSModal,
+          showAboutModal,
+          showAddSpeciesModal,
+          showIOSInstallModal,
+          selectedMushroomId,
+          modalHistory,
+        },
+        isEditableDomTarget(e.target)
+      );
+
+      if (!escapeStep || escapeStep.action === 'blocked-by-disclaimer') {
+        return;
+      }
+
+      e.preventDefault();
+      handleCentralBackRef.current('ui');
+    };
+
+    let touchStartX: number | null = null;
+    let touchStartY: number | null = null;
+    let touchIgnored = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      onFirstUserInteraction();
+      if (isIOS || e.touches.length !== 1) {
+        touchStartX = null;
+        return;
+      }
+      const touch = e.touches[0];
+      if (touch.clientX > 28 || isSwipeIgnoredDomTarget(e.target)) {
+        touchStartX = null;
+        touchIgnored = true;
+        return;
+      }
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      touchIgnored = false;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchStartX === null || touchStartY === null || touchIgnored || e.touches.length !== 1) {
+        return;
+      }
+      const touch = e.touches[0];
+      const dy = Math.abs(touch.clientY - touchStartY);
+      const dx = touch.clientX - touchStartX;
+      // If user starts scrolling vertically, cancel horizontal edge-swipe tracking immediately
+      if (dy > 28 && dy > Math.abs(dx)) {
+        touchIgnored = true;
+        touchStartX = null;
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (touchStartX === null || touchStartY === null || touchIgnored || e.changedTouches.length !== 1) {
+        touchStartX = null;
+        touchStartY = null;
+        return;
+      }
+      const touch = e.changedTouches[0];
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = Math.abs(touch.clientY - touchStartY);
+      touchStartX = null;
+      touchStartY = null;
+
+      if (deltaX >= 72 && deltaX > deltaY * 1.8) {
+        handleCentralBackRef.current('swipe');
+      }
+    };
+
+    window.addEventListener('pointerdown', onFirstUserInteraction, { passive: true });
+    window.addEventListener('popstate', onPopState);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', onFirstUserInteraction);
+      window.removeEventListener('popstate', onPopState);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [
+    isIOS,
+    showDisclaimerModal,
+    selectedMushroom,
+    lightboxIndex,
+    galleryPhotos,
+    compareModalData,
+    lookalikeInfoModal,
+    showSOSModal,
+    showAboutModal,
+    showAddSpeciesModal,
+    showIOSInstallModal,
+    selectedMushroomId,
+    modalHistory,
+  ]);
 
   // Filtered mushrooms for Encyclopedia & Visual Key
   const filteredMushrooms = useMemo(() => {
@@ -1030,7 +1401,7 @@ export default function App() {
             href="#top"
             onClick={(e) => {
               e.preventDefault();
-              setActiveTab('enciklopedija');
+              switchMainTab('enciklopedija');
             }}
             className="flex items-center gap-3 group shrink-0"
           >
@@ -1050,7 +1421,7 @@ export default function App() {
           <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-[#9bb0a2]">
             <button
               type="button"
-              onClick={() => setActiveTab('enciklopedija')}
+              onClick={() => switchMainTab('enciklopedija')}
               className={`hover:text-[#f2f6f3] transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 activeTab === 'enciklopedija' ? 'text-emerald-400 underline underline-offset-8' : ''
               }`}
@@ -1059,7 +1430,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('kljuc')}
+              onClick={() => switchMainTab('kljuc')}
               className={`hover:text-[#f2f6f3] transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 activeTab === 'kljuc' ? 'text-emerald-400 underline underline-offset-8' : ''
               }`}
@@ -1068,7 +1439,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('skener')}
+              onClick={() => switchMainTab('skener')}
               className={`hover:text-[#f2f6f3] transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 activeTab === 'skener' ? 'text-emerald-400 underline underline-offset-8' : ''
               }`}
@@ -1077,7 +1448,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('dnevnik')}
+              onClick={() => switchMainTab('dnevnik')}
               className={`hover:text-[#f2f6f3] transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 activeTab === 'dnevnik' ? 'text-emerald-400 underline underline-offset-8' : ''
               }`}
@@ -1086,7 +1457,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('kviz')}
+              onClick={() => switchMainTab('kviz')}
               className={`hover:text-[#f2f6f3] transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 activeTab === 'kviz' ? 'text-emerald-400 underline underline-offset-8' : ''
               }`}
@@ -1161,6 +1532,20 @@ export default function App() {
                 Izvanmrežni (Offline) način rada aktivan — cijela enciklopedija, vizualni ključ i terenski dnevnik rade bez signala.
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Visible Subpage Back Bar (on non-Encyclopedia tabs) */}
+        {activeTab !== 'enciklopedija' && (
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => handleCentralBackRef.current('ui')}
+              className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-[#15231a] hover:bg-[#1e3225] border border-[#263c2e] text-xs font-semibold text-emerald-300 inline-flex items-center gap-2 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4 shrink-0" />
+              <span>Natrag na Enciklopediju</span>
+            </button>
           </div>
         )}
 
@@ -1504,7 +1889,7 @@ export default function App() {
         <div className="grid grid-cols-5 items-center h-16 px-1">
           <button
             type="button"
-            onClick={() => setActiveTab('enciklopedija')}
+            onClick={() => switchMainTab('enciklopedija')}
             className={`min-h-[44px] flex flex-col items-center justify-center cursor-pointer ${
               activeTab === 'enciklopedija' ? 'text-emerald-400' : 'text-[#889e90]'
             }`}
@@ -1516,7 +1901,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('kljuc')}
+            onClick={() => switchMainTab('kljuc')}
             className={`min-h-[44px] flex flex-col items-center justify-center cursor-pointer ${
               activeTab === 'kljuc' ? 'text-emerald-400' : 'text-[#889e90]'
             }`}
@@ -1528,7 +1913,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('skener')}
+            onClick={() => switchMainTab('skener')}
             className={`min-h-[44px] flex flex-col items-center justify-center cursor-pointer ${
               activeTab === 'skener' ? 'text-emerald-400' : 'text-[#889e90]'
             }`}
@@ -1540,7 +1925,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('dnevnik')}
+            onClick={() => switchMainTab('dnevnik')}
             className={`min-h-[44px] flex flex-col items-center justify-center cursor-pointer ${
               activeTab === 'dnevnik' ? 'text-emerald-400' : 'text-[#889e90]'
             }`}
@@ -1552,7 +1937,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('kviz')}
+            onClick={() => switchMainTab('kviz')}
             className={`min-h-[44px] flex flex-col items-center justify-center cursor-pointer ${
               activeTab === 'kviz' ? 'text-emerald-400' : 'text-[#889e90]'
             }`}
@@ -1565,13 +1950,24 @@ export default function App() {
         </div>
       </nav>
 
+      {/* Double-Back Exit Toast on Home Screen */}
+      {showExitToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-[75] px-4 py-2.5 rounded-2xl bg-[#101c15]/95 border border-emerald-500/50 text-xs sm:text-sm font-semibold text-[#f2f6f3] shadow-2xl backdrop-blur-md whitespace-nowrap"
+        >
+          Pritisnite još jednom za izlaz
+        </div>
+      )}
+
       {/* SPECIES DETAIL MODAL / DRAWER */}
       {selectedMushroom && (
         <MushroomDetailModal
           mushroom={selectedMushroom}
           modalHistory={modalHistory}
           previousMushroomInHistory={previousMushroomInHistory}
-          onBack={handleModalBack}
+          onBack={() => handleCentralBackRef.current('ui')}
           onClose={closeMushroomModal}
           onUserPhotoUpload={handleUserPhotoUpload}
           detailMode={detailMode}

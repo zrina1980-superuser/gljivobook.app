@@ -344,24 +344,24 @@ export const MushroomDetailModal: React.FC<MushroomDetailModalProps> = ({
         className="w-full max-w-4xl max-w-full max-h-[92vh] overflow-y-auto overflow-x-hidden box-border rounded-t-3xl sm:rounded-3xl bg-[#101913] border border-[#283e30] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Navigation Stack Back Bar (when modalHistory has > 1 step) */}
-        {modalHistory.length > 1 && previousMushroomInHistory && (
-          <div className="sticky top-0 z-20 bg-[#0c140f]/95 backdrop-blur-md border-b border-[#24382b] px-4 py-2.5 flex items-center justify-between gap-2 max-w-full overflow-x-hidden box-border">
-            <button
-              type="button"
-              onClick={onBack}
-              className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/50 text-xs font-semibold text-emerald-300 inline-flex items-center gap-2 transition-colors cursor-pointer truncate max-w-[80%]"
-            >
-              <ArrowLeft className="w-4 h-4 shrink-0" />
-              <span className="truncate">
-                ⬅️ Natrag na: {previousMushroomInHistory.name}
-              </span>
-            </button>
-            <span className="text-[11px] font-mono-tabular text-[#889e90] shrink-0">
-              Korak {modalHistory.length}
+        {/* Navigation Stack Back Bar (always visible on species detail) */}
+        <div className="sticky top-0 z-20 bg-[#0c140f]/95 backdrop-blur-md border-b border-[#24382b] px-4 py-2.5 flex items-center justify-between gap-2 max-w-full overflow-x-hidden box-border">
+          <button
+            type="button"
+            onClick={onBack}
+            className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/50 text-xs font-semibold text-emerald-300 inline-flex items-center gap-2 transition-colors cursor-pointer truncate max-w-[80%]"
+          >
+            <ArrowLeft className="w-4 h-4 shrink-0" />
+            <span className="truncate">
+              {modalHistory.length > 1 && previousMushroomInHistory
+                ? `⬅️ Natrag na: ${previousMushroomInHistory.name}`
+                : '⬅️ Natrag'}
             </span>
-          </div>
-        )}
+          </button>
+          <span className="text-[11px] font-mono-tabular text-[#889e90] shrink-0">
+            {modalHistory.length > 1 ? `Korak ${modalHistory.length}` : 'Detalji vrste'}
+          </span>
+        </div>
 
         {/* Top Image & Quick Close */}
         <div className="relative max-w-full overflow-x-hidden box-border">
