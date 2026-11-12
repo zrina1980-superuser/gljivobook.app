@@ -37,6 +37,7 @@ import { idbGetWithMigration, idbSet } from '../services/storageService';
 import { ForestPermitSection } from './ForestPermitSection';
 
 interface FieldJournalViewProps {
+  registerNestedBack: (close: () => void) => () => void;
   findings: SavedFinding[];
   mushrooms: Mushroom[];
   onAddFinding: (finding: SavedFinding) => void;
@@ -495,6 +496,7 @@ ${waypointsXml}
 }
 
 export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
+  registerNestedBack,
   findings,
   mushrooms,
   onAddFinding,
@@ -541,6 +543,9 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
 
   // Outdoor Field Log Share Modal State (1080x1350px / 4:5 HTML5 Canvas)
   const [shareModalFinding, setShareModalFinding] = useState<SavedFinding | null>(null);
+  useEffect(() => {
+    if (shareModalFinding) return registerNestedBack(() => setShareModalFinding(null));
+  }, [shareModalFinding, registerNestedBack]);
   const [shareLocationLabel, setShareLocationLabel] = useState<string>('Medvednica • Poljanica Bistranska');
   const [shareAltitudeMeters, setShareAltitudeMeters] = useState<string>('460');
   const [shareDateTimeText, setShareDateTimeText] = useState<string>('');
@@ -2123,7 +2128,7 @@ export const FieldJournalView: React.FC<FieldJournalViewProps> = ({
       </div>
 
       {/* DINAMIČKA ŠUMSKA DOZVOLA - HRVATSKE ŠUME */}
-      <ForestPermitSection />
+      <ForestPermitSection registerNestedBack={registerNestedBack} />
 
       {/* TERENSKI SIGURNOSNI MODULI: "🚗 Gdje mi je auto?" + "🧺 Vaga ulova (3.00 kg limit)" */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

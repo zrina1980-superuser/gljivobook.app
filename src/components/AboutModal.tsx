@@ -17,6 +17,7 @@ import { ForestPermitSection } from './ForestPermitSection';
 import { ZrinaLogo } from './ZrinaLogo';
 
 interface AboutModalProps {
+  registerNestedBack: (close: () => void) => () => void;
   isOpen: boolean;
   onClose: () => void;
   totalSpeciesCount: number;
@@ -27,6 +28,7 @@ interface AboutModalProps {
 }
 
 export const AboutModal: React.FC<AboutModalProps> = ({
+  registerNestedBack,
   isOpen,
   onClose,
   totalSpeciesCount,
@@ -149,7 +151,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
         )}
 
         {/* Dozvola za sakupljanje gljiva (Hrvatske šume) */}
-        <ForestPermitSection compact={true} />
+        <ForestPermitSection compact={true} registerNestedBack={registerNestedBack} />
 
         {/* Kratke upute za šumu (3 sažeta koraka) */}
         <div className="space-y-3">

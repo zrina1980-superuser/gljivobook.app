@@ -51,10 +51,12 @@ export function extractYearFromPermitNumber(rawPermit: string): number | null {
 
 interface ForestPermitSectionProps {
   compact?: boolean;
+  registerNestedBack: (close: () => void) => () => void;
 }
 
 export const ForestPermitSection: React.FC<ForestPermitSectionProps> = ({
   compact = false,
+  registerNestedBack,
 }) => {
   const currentYear = new Date().getFullYear();
 
@@ -65,6 +67,10 @@ export const ForestPermitSection: React.FC<ForestPermitSectionProps> = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showRangerModal, setShowRangerModal] = useState<boolean>(false);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (showRangerModal) return registerNestedBack(() => setShowRangerModal(false));
+  }, [showRangerModal, registerNestedBack]);
 
   // Load saved permit from IndexedDB and listen for cross-component updates
   useEffect(() => {

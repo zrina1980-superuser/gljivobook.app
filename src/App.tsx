@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
   BookOpen,
@@ -408,6 +408,15 @@ export default function App() {
   const hasUserInteractedRef = useRef<boolean>(false);
   const hasHistoryGuardRef = useRef<boolean>(false);
   const lastBackHandledAtRef = useRef<number>(0);
+  const lastBackSourceRef = useRef<'popstate' | 'ui' | 'swipe' | null>(null);
+  const exitNavigationRef = useRef<'remove-guard' | 'leaving' | null>(null);
+  const nestedBackHandlersRef = useRef<Array<() => void>>([]);
+  const registerNestedBack = useCallback((close: () => void) => {
+    nestedBackHandlersRef.current.push(close);
+    return () => {
+      nestedBackHandlersRef.current = nestedBackHandlersRef.current.filter((item) => item !== close);
+    };
+  }, []);
   const lastExitPromptAtRef = useRef<number | null>(null);
   const exitToastTimerRef = useRef<number | null>(null);
   const [showExitToast, setShowExitToast] = useState<boolean>(false);
@@ -780,15 +789,30 @@ export default function App() {
 
   handleCentralBackRef.current = (source: 'popstate' | 'ui' | 'swipe') => {
     const now = Date.now();
-    // Prevent duplicate execution when native popstate and edge-swipe overlap
-    if (now - lastBackHandledAtRef.current < 220) {
+    // Ignore only overlapping native and custom swipe events, not consecutive Back presses.
+    if (now - lastBackHandledAtRef.current < 220 &&
+        ((source === 'popstate' && lastBackSourceRef.current === 'swipe') ||
+         (source === 'swipe' && lastBackSourceRef.current === 'popstate'))) {
+      if (source === 'popstate') {
+        hasHistoryGuardRef.current = false;
+        ensureHistoryGuard();
+      }
       return;
     }
     lastBackHandledAtRef.current = now;
+    lastBackSourceRef.current = source;
     hasUserInteractedRef.current = true;
 
     if (source === 'popstate') {
       hasHistoryGuardRef.current = false;
+    }
+
+    const closeNested = nestedBackHandlersRef.current[nestedBackHandlersRef.current.length - 1];
+    if (!showDisclaimerModal && closeNested) {
+      clearExitPromptState();
+      closeNested();
+      ensureHistoryGuard();
+      return;
     }
 
     const step = resolveBackNavigationStep({
@@ -909,15 +933,12 @@ export default function App() {
 
       case 'allow-exit':
         clearExitPromptState();
-        // Do NOT push another history guard and do NOT call window.close();
-        // let the browser/OS handle the exit naturally when supported.
-        if (source !== 'popstate' && typeof window !== 'undefined' && window.history.length > 1) {
-          try {
-            window.history.back();
-          } catch {
-            // Ignore
-          }
-        }
+        exitNavigationRef.current = source !== 'popstate' && hasHistoryGuardRef.current
+          ? 'remove-guard'
+          : 'leaving';
+        hasHistoryGuardRef.current = false;
+        hasUserInteractedRef.current = false;
+        window.history.back();
         return;
     }
   };
@@ -926,18 +947,33 @@ export default function App() {
   useEffect(() => {
     const onFirstUserInteraction = () => {
       if (!hasUserInteractedRef.current) {
+        exitNavigationRef.current = null;
         hasUserInteractedRef.current = true;
         ensureHistoryGuard();
       }
     };
 
     const onPopState = () => {
+      if (exitNavigationRef.current === 'remove-guard') {
+        exitNavigationRef.current = 'leaving';
+        window.history.back();
+        return;
+      }
+      if (exitNavigationRef.current === 'leaving') {
+        exitNavigationRef.current = null;
+        return;
+      }
       handleCentralBackRef.current('popstate');
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
       onFirstUserInteraction();
       if (e.key !== 'Escape') return;
+      if (!showDisclaimerModal && !isEditableDomTarget(e.target) && nestedBackHandlersRef.current.length) {
+        e.preventDefault();
+        handleCentralBackRef.current('ui');
+        return;
+      }
       const escapeStep = resolveEscapeModalStep(
         {
           showDisclaimerModal,
@@ -1820,6 +1856,7 @@ export default function App() {
         {/* FIELD JOURNAL TAB */}
         {activeTab === 'dnevnik' && (
           <FieldJournalView
+            registerNestedBack={registerNestedBack}
             findings={findings}
             mushrooms={allMushrooms}
             onAddFinding={(f) => setFindings((prev) => [f, ...prev])}
@@ -2709,6 +2746,7 @@ export default function App() {
 
       {/* ABOUT & INSTRUCTIONS MODAL */}
       <AboutModal
+        registerNestedBack={registerNestedBack}
         isOpen={showAboutModal}
         onClose={() => setShowAboutModal(false)}
         totalSpeciesCount={allMushrooms.length}

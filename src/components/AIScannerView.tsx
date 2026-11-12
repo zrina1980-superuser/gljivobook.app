@@ -227,6 +227,7 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
   const [engineMode, setEngineMode] = useState<ScannerEngineMode>('local');
   const [sessionApiKey, setSessionApiKey] = useState<string>('');
   const [savedDeviceKey, setSavedDeviceKey] = useState<string>('');
+  const [keyStorageKnown, setKeyStorageKnown] = useState(false);
   const [keyStatusMessage, setKeyStatusMessage] = useState<{
     type: 'saved' | 'error' | 'info';
     text: string;
@@ -253,6 +254,10 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
   // Load user's saved Gemini API key from localStorage on startup (default engine remains 'local')
   useEffect(() => {
     const loaded = loadUserGeminiApiKey();
+    setKeyStorageKnown(loaded.storageAvailable);
+    if (loaded.errorMessage) {
+      setKeyStatusMessage({ type: 'error', text: loaded.errorMessage });
+    }
     if (loaded.key) {
       setSessionApiKey(loaded.key);
       setSavedDeviceKey(loaded.key);
@@ -266,6 +271,7 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
     setError(null);
     const saveResult = saveUserGeminiApiKey(sessionApiKey);
     if (saveResult.saved) {
+      setKeyStorageKnown(true);
       setSessionApiKey(saveResult.key);
       setSavedDeviceKey(saveResult.key);
       setKeyStatusMessage({
@@ -273,6 +279,7 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
         text: saveResult.message,
       });
     } else {
+      setKeyStorageKnown(false);
       setKeyStatusMessage({
         type: 'error',
         text: saveResult.message,
@@ -285,6 +292,7 @@ export const AIScannerView: React.FC<AIScannerViewProps> = ({ mushrooms, onSelec
     const removeResult = removeUserGeminiApiKey();
     setSessionApiKey('');
     setSavedDeviceKey('');
+    setKeyStorageKnown(removeResult.removed);
     setKeyStatusMessage({
       type: removeResult.removed ? 'info' : 'error',
       text: removeResult.message,
@@ -536,7 +544,7 @@ Pouzdanost (confidence) nikada ne smije prelaziti 90% iz sigurnosnih razloga.`;
               </span>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#0d1812] border border-[#263c2e] text-[11px] font-medium text-[#9bb0a2]">
                 <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                Bez trajno spremljenog API ključa u aplikaciji
+                Bez ugrađenog zajedničkog API ključa
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-serif-display font-bold text-[#f2f6f3]">
@@ -717,7 +725,7 @@ Pouzdanost (confidence) nikada ne smije prelaziti 90% iz sigurnosnih razloga.`;
                     <span>Spremi na ovom uređaju</span>
                   </button>
 
-                  {(sessionApiKey || savedDeviceKey) && (
+                  {(sessionApiKey || savedDeviceKey || !keyStorageKnown) && (
                     <button
                       type="button"
                       onClick={handleRemoveKeyFromDevice}
@@ -745,7 +753,9 @@ Pouzdanost (confidence) nikada ne smije prelaziti 90% iz sigurnosnih razloga.`;
 
               {/* Saved Key Confirmation Badge / Storage Status Feedback */}
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                {isCurrentKeySavedOnDevice ? (
+                {!keyStorageKnown ? (
+                  <span className="text-amber-300">Status spremljenog ključa nije moguće potvrditi.</span>
+                ) : isCurrentKeySavedOnDevice ? (
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-medium">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span>
